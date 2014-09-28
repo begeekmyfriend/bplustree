@@ -83,7 +83,7 @@ non_leaf_new()
         struct non_leaf *node = malloc(sizeof(*node));
         assert(node != NULL);
         node->type = BPLUS_TREE_NON_LEAF;
-        memset(node->key, 0, DEGREE * sizeof(int));
+        memset(node->key, 0, (DEGREE - 1) * sizeof(int));
         memset(node->sub_ptr, 0, DEGREE * sizeof(struct node *));
         node->parent = NULL;
         node->next = NULL;
