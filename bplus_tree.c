@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <string.h>
 
-#define DEGREE        7
+#define ORDER        7
 #define ENTRIES       10
 #define MAX_LEVEL     5
 
@@ -37,8 +37,8 @@ struct non_leaf {
         struct non_leaf *parent;
         struct non_leaf *next;
         int children;
-        int key[DEGREE - 1];
-        struct node *sub_ptr[DEGREE];
+        int key[ORDER - 1];
+        struct node *sub_ptr[ORDER];
 };
 
 struct leaf {
@@ -64,16 +64,16 @@ key_binary_search(int *arr, int len, int target)
         int high = len;
         while (low + 1 < high) {
                 int mid = low + (high - low) / 2;
-                if (target < arr[mid]) {
-                        high = mid;
-                } else {
+                if (target > arr[mid]) {
                         low = mid;
+                } else {
+                        high = mid;
                 }
         }
-        if (low < 0 || arr[low] != target) {
-                return -low - 2;
+        if (high >= len || arr[high] != target) {
+                return -high - 1;
         } else {
-                return low;
+                return high;
         }
 }
 
@@ -83,8 +83,8 @@ non_leaf_new()
         struct non_leaf *node = malloc(sizeof(*node));
         assert(node != NULL);
         node->type = BPLUS_TREE_NON_LEAF;
-        memset(node->key, 0, (DEGREE - 1) * sizeof(int));
-        memset(node->sub_ptr, 0, DEGREE * sizeof(struct node *));
+        memset(node->key, 0, (ORDER - 1) * sizeof(int));
+        memset(node->sub_ptr, 0, ORDER * sizeof(struct node *));
         node->parent = NULL;
         node->next = NULL;
         node->children = 0;
@@ -165,9 +165,9 @@ non_leaf_insert(struct tree *tree, struct non_leaf *node, struct node *sub_node,
         insert = -insert - 1;
 
         /* node full */
-        if (node->children == DEGREE) {
+        if (node->children == ORDER) {
                 /* split key index */
-                split = (DEGREE + 1) / 2;
+                split = (ORDER + 1) / 2;
                 /* splited sibling node */
                 sibling = non_leaf_new();
                 sibling->next = node->next;
@@ -180,7 +180,7 @@ non_leaf_insert(struct tree *tree, struct non_leaf *node, struct node *sub_node,
                         sibling->sub_ptr[j] = node->sub_ptr[i + 1];
                         node->sub_ptr[i + 1]->parent = sibling;
                         i++;
-                        for (; i < DEGREE - 1; i++, j++) {
+                        for (; i < ORDER - 1; i++, j++) {
                                 sibling->key[j] = node->key[i];
                                 sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                                 node->sub_ptr[i + 1]->parent = sibling;
@@ -199,7 +199,7 @@ non_leaf_insert(struct tree *tree, struct non_leaf *node, struct node *sub_node,
                         sibling->sub_ptr[j] = sub_node;
                         sub_node->parent = sibling;
                         i++;
-                        for (; i < DEGREE - 1; i++, j++) {
+                        for (; i < ORDER - 1; i++, j++) {
                                 sibling->key[j] = node->key[i];
                                 sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                                 node->sub_ptr[i + 1]->parent = sibling;
@@ -211,7 +211,7 @@ non_leaf_insert(struct tree *tree, struct non_leaf *node, struct node *sub_node,
                         sibling->sub_ptr[j] = node->sub_ptr[i + 1];
                         node->sub_ptr[i + 1]->parent = sibling;
                         i++;
-                        while (i < DEGREE - 1) {
+                        while (i < ORDER - 1) {
                                 if (j != insert - split) {
                                         sibling->key[j] = node->key[i];
                                         sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
@@ -255,7 +255,7 @@ non_leaf_insert(struct tree *tree, struct non_leaf *node, struct node *sub_node,
                         /* new root */
                         tree->root = (struct node *)parent;
                         if (++level >= MAX_LEVEL) {
-                                fprintf(stderr, "!!Panic: Level exceeded, please expand the non-leaf degree or leaf capacity of the tree!\n");
+                                fprintf(stderr, "!!Panic: Level exceeded, please expand the non-leaf order or leaf capacity of the tree!\n");
                                 assert(0);
                         }
                         tree->head[level] = (struct node *)parent;
@@ -404,7 +404,7 @@ non_leaf_remove(struct tree *tree, struct non_leaf *node, int remove, int level)
         int i, j, k;
         struct non_leaf *sibling;
 
-        if (node->children <= (DEGREE + 1) / 2) {
+        if (node->children <= (ORDER + 1) / 2) {
                 struct non_leaf *parent = node->parent;
                 if (parent != NULL) {
                         int borrow = 0;
@@ -434,7 +434,7 @@ non_leaf_remove(struct tree *tree, struct non_leaf *node, int remove, int level)
                         }
 
                         if (borrow == BORROW_FROM_LEFT) {
-                                if (sibling->children > (DEGREE + 1) / 2) {
+                                if (sibling->children > (ORDER + 1) / 2) {
                                         /* node right shift */
                                         for (j = remove; j > 0; j--) {
                                                 node->key[j] = node->key[j - 1];
@@ -480,7 +480,7 @@ non_leaf_remove(struct tree *tree, struct non_leaf *node, int remove, int level)
                                         node->sub_ptr[remove + 1] = node->sub_ptr[remove + 2];
                                 }
                                 node->children--;
-                                if (sibling->children > (DEGREE + 1) / 2) {
+                                if (sibling->children > (ORDER + 1) / 2) {
                                         /* left rotate key */
                                         node->key[node->children - 1] = parent->key[i];
                                         parent->key[i] = sibling->key[0];
@@ -770,8 +770,8 @@ put(int key, int data)
 void
 init(void)
 {
-        /* The degree of non leaf nodes must be more than two */
-        assert(DEGREE > 2);
+        /* The max order of non leaf nodes must be more than two */
+        assert(ORDER > 2);
         bplus_tree = malloc(sizeof(*bplus_tree));
         assert(bplus_tree != NULL);
         bplus_tree->root = NULL;
@@ -872,6 +872,18 @@ main(void)
 
         int i;
 
+/* Ordered insertion and deletion */
+        for (i = 1; i <= MAX_KEY; i++) {
+                put(i, i);
+        }
+        bplus_tree_dump(bplus_tree);
+
+        for (i = 1; i <= MAX_KEY; i++) {
+                put(i, 0);
+        }
+        bplus_tree_dump(bplus_tree);
+
+/* Ordered insertion and reversed deletion */
         for (i = 1; i <= MAX_KEY; i++) {
                 put(i, i);
         }
@@ -882,12 +894,24 @@ main(void)
         }
         bplus_tree_dump(bplus_tree);
 
+/* Reversed insertion and ordered deletion */
         for (i = MAX_KEY; i > 0; i--) {
                 put(i, i);
         }
         bplus_tree_dump(bplus_tree);
 
         for (i = 1; i <= MAX_KEY; i++) {
+                put(i, 0);
+        }
+        bplus_tree_dump(bplus_tree);
+
+/* Reversed insertion and reversed deletion */
+        for (i = MAX_KEY; i > 0; i--) {
+                put(i, i);
+        }
+        bplus_tree_dump(bplus_tree);
+
+        for (i = MAX_KEY; i > 0; i--) {
                 put(i, 0);
         }
         bplus_tree_dump(bplus_tree);
