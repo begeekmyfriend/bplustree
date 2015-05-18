@@ -1,0 +1,9 @@
+{
+        "name" : "bplustree",
+        "license" : "MIT",
+        "version" : "0.1",
+        "repo" : "begeekmyfriend/bplustree",
+        "description" : "A minimal B+Tree algorithm demo.",
+        "src" : ["bplustree.c"],
+        "keywords" : ["tree", "dictionary", "B+tree", "key-value", "storage" ]
+}
