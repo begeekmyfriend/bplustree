@@ -163,5 +163,7 @@ main(void)
         bplus_tree_dump(tree);
 #endif
 
+        bplus_tree_deinit(tree);
+
         return 0;
 }

@@ -746,3 +746,9 @@ bplus_tree_init(int level, int order, int entries)
 
         return tree;
 }
+
+void
+bplus_tree_deinit(struct bplus_tree *tree)
+{
+        free(tree);
+}

@@ -44,5 +44,6 @@ void bplus_tree_dump(struct bplus_tree *tree);
 int bplus_tree_get(struct bplus_tree *tree, int key);
 void bplus_tree_put(struct bplus_tree *tree, int key, int data);
 struct bplus_tree *bplus_tree_init(int level, int order, int entries);
+void bplus_tree_deinit(struct bplus_tree *tree);
 
 #endif  /* _BPLUS_TREE_H */
