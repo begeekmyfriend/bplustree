@@ -15,7 +15,7 @@ stdin_flush(void)
 int
 main(void)
 {
-        int i, ret;
+        int i, ret, again;
         int level, order, entries, max_key;
         struct bplus_tree *tree;
 
@@ -26,9 +26,16 @@ main(void)
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &level);
-                        stdin_flush();  /* pass off '\n' */
+                        if (!ret || getchar() != '\n') {
+                                stdin_flush();
+                                again = 1;
+                        } else if (level > MAX_LEVEL) {
+                                again = 1;
+                        } else {
+                                again = 0;
+                        }
                 }
-        } while (!ret);
+        } while (again);
 
         do {
                 fprintf(stdout, "Set b+tree max order (<= 1024 e.g. 7): ");
@@ -37,9 +44,16 @@ main(void)
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &order);
-                        stdin_flush();  /* pass off '\n' */
+                        if (!ret || getchar() != '\n') {
+                                stdin_flush();
+                                again = 1;
+                        } else if (order > MAX_ORDER) {
+                                again = 1;
+                        } else {
+                                again = 0;
+                        }
                 }
-        } while (!ret);
+        } while (again);
 
         do {
                 fprintf(stdout, "Set b+tree max entries (<= 4096 e.g. 10): ");
@@ -48,9 +62,16 @@ main(void)
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &entries);
-                        stdin_flush();  /* pass off '\n' */
+                        if (!ret || getchar() != '\n') {
+                                stdin_flush();
+                                again = 1;
+                        } else if (entries > MAX_ENTRIES) {
+                                again = 1;
+                        } else {
+                                again = 0;
+                        }
                 }
-        } while (!ret);
+        } while (again);
 
         do {
                 fprintf(stdout, "Set b+tree max key (e.g. 100): ");
@@ -59,9 +80,14 @@ main(void)
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &max_key);
-                        stdin_flush();  /* pass off '\n' */
+                        if (!ret || getchar() != '\n') {
+                                stdin_flush();
+                                again = 1;
+                        } else {
+                                again = 0;
+                        }
                 }
-        } while (!ret);
+        } while (again);
 
         /* Init b+tree */
         tree = bplus_tree_init(level, order, entries);
