@@ -3,166 +3,128 @@
 
 #include "bplustree.h"
 
+static void
+stdin_flush(void)
+{
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) {
+                continue;
+        }
+}
+
 int
 main(void)
 {
-        int level = 5;
-        int order = 7;
-        int entries = 10;
+        int i, ret;
+        int level, order, entries, max_key;
         struct bplus_tree *tree;
 
+        do {
+                fprintf(stdout, "Set b+tree max level (<= 10 e.g. 5): ");
+                if ((i = getchar()) == '\n') {
+                        level = 5;
+                } else {
+                        ungetc(i, stdin);
+                        ret = fscanf(stdin, "%d", &level);
+                        stdin_flush();  /* pass off '\n' */
+                }
+        } while (!ret);
+
+        do {
+                fprintf(stdout, "Set b+tree max order (<= 1024 e.g. 7): ");
+                if ((i = getchar()) == '\n') {
+                        order = 7;
+                } else {
+                        ungetc(i, stdin);
+                        ret = fscanf(stdin, "%d", &order);
+                        stdin_flush();  /* pass off '\n' */
+                }
+        } while (!ret);
+
+        do {
+                fprintf(stdout, "Set b+tree max entries (<= 4096 e.g. 10): ");
+                if ((i = getchar()) == '\n') {
+                        entries = 10;
+                } else {
+                        ungetc(i, stdin);
+                        ret = fscanf(stdin, "%d", &entries);
+                        stdin_flush();  /* pass off '\n' */
+                }
+        } while (!ret);
+
+        do {
+                fprintf(stdout, "Set b+tree max key (e.g. 100): ");
+                if ((i = getchar()) == '\n') {
+                        max_key = 100;
+                } else {
+                        ungetc(i, stdin);
+                        ret = fscanf(stdin, "%d", &max_key);
+                        stdin_flush();  /* pass off '\n' */
+                }
+        } while (!ret);
+
+        /* Init b+tree */
         tree = bplus_tree_init(level, order, entries);
         if (tree != NULL) {
-                fprintf(stderr, "B+tree CRUD testing...\n");
+                fprintf(stderr, "b+tree CRUD testing...\n");
         } else {
                 fprintf(stderr, "Init failure!\n");
                 exit(-1);
         }
-#if 0
-        bplus_tree_put(tree, 24, 24);
-        bplus_tree_put(tree, 72, 72);
-        bplus_tree_put(tree, 1, 1);
-        bplus_tree_put(tree, 39, 39);
-        bplus_tree_put(tree, 53, 53);
-        bplus_tree_put(tree, 63, 63);
-        bplus_tree_put(tree, 90, 90);
-        bplus_tree_put(tree, 88, 88);
-        bplus_tree_put(tree, 15, 15);
-        bplus_tree_put(tree, 10, 10);
-        bplus_tree_put(tree, 44, 44);
-        bplus_tree_put(tree, 68, 68);
-        bplus_tree_put(tree, 74, 74);
-        bplus_tree_dump(tree);
-#endif
-
-#if 0
-        bplus_tree_put(tree, 10, 10);
-        bplus_tree_put(tree, 15, 15);
-        bplus_tree_put(tree, 18, 18);
-        bplus_tree_put(tree, 22, 22);
-        bplus_tree_put(tree, 27, 27);
-        bplus_tree_put(tree, 34, 34);
-        bplus_tree_put(tree, 40, 40);
-        bplus_tree_put(tree, 44, 44);
-        bplus_tree_put(tree, 47, 47);
-        bplus_tree_put(tree, 54, 54);
-        bplus_tree_put(tree, 67, 67);
-        bplus_tree_put(tree, 72, 72);
-        bplus_tree_put(tree, 74, 74);
-        bplus_tree_put(tree, 78, 78);
-        bplus_tree_put(tree, 81, 81);
-        bplus_tree_put(tree, 84, 84);
-        bplus_tree_dump(tree);
-#endif
-
-#if 0
-        fprintf(stderr, "key:24 data:%d\n", bplus_tree_get(tree, 24));
-        fprintf(stderr, "key:72 data:%d\n", bplus_tree_get(tree, 72));
-        fprintf(stderr, "key:01 data:%d\n", bplus_tree_get(tree, 1));
-        fprintf(stderr, "key:39 data:%d\n", bplus_tree_get(tree, 39));
-        fprintf(stderr, "key:53 data:%d\n", bplus_tree_get(tree, 53));
-        fprintf(stderr, "key:63 data:%d\n", bplus_tree_get(tree, 63));
-        fprintf(stderr, "key:90 data:%d\n", bplus_tree_get(tree, 90));
-        fprintf(stderr, "key:88 data:%d\n", bplus_tree_get(tree, 88));
-        fprintf(stderr, "key:15 data:%d\n", bplus_tree_get(tree, 15));
-        fprintf(stderr, "key:10 data:%d\n", bplus_tree_get(tree, 10));
-        fprintf(stderr, "key:44 data:%d\n", bplus_tree_get(tree, 44));
-        fprintf(stderr, "key:68 data:%d\n", bplus_tree_get(tree, 68));
-        fprintf(stderr, "key:74 data:%d\n", bplus_tree_get(tree, 74));
-        fprintf(stderr, "key:44 data:%d\n", bplus_tree_get(tree, 44));
-        fprintf(stderr, "key:45 data:%d\n", bplus_tree_get(tree, 45));
-        fprintf(stderr, "key:46 data:%d\n", bplus_tree_get(tree, 46));
-        fprintf(stderr, "key:47 data:%d\n", bplus_tree_get(tree, 47));
-        fprintf(stderr, "key:48 data:%d\n", bplus_tree_get(tree, 48));
-#endif
-
-#if 0
-        bplus_tree_put(tree, 90, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 88, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 74, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 72, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 68, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 63, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 53, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 44, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 39, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 24, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 15, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 10, 0);
-        bplus_tree_dump(tree);
-        bplus_tree_put(tree, 1, 0);
-        bplus_tree_dump(tree);
-#endif
-
-#if 1
-#define MAX_KEY  100
-
-        int i;
 
         /* Ordered insertion and deletion */
-        fprintf(stderr, "\nInsert 1 to 100, dump:\n");
-        for (i = 1; i <= MAX_KEY; i++) {
+        fprintf(stderr, "\n-- Insert 1 to %d, dump:\n", max_key);
+        for (i = 1; i <= max_key; i++) {
                 bplus_tree_put(tree, i, i);
         }
         bplus_tree_dump(tree);
 
-        fprintf(stderr, "\nDelete 1 to 100, dump:\n");
-        for (i = 1; i <= MAX_KEY; i++) {
+        fprintf(stderr, "\n-- Delete 1 to %d, dump:\n", max_key);
+        for (i = 1; i <= max_key; i++) {
                 bplus_tree_put(tree, i, 0);
         }
         bplus_tree_dump(tree);
 
         /* Ordered insertion and reversed deletion */
-        fprintf(stderr, "\nInsert 1 to 100, dump:\n");
-        for (i = 1; i <= MAX_KEY; i++) {
+        fprintf(stderr, "\n-- Insert 1 to %d, dump:\n", max_key);
+        for (i = 1; i <= max_key; i++) {
                 bplus_tree_put(tree, i, i);
         }
         bplus_tree_dump(tree);
 
-        fprintf(stderr, "\nDelete 100 to 1, dump:\n");
+        fprintf(stderr, "\n-- Delete %d to 1, dump:\n", max_key);
         while (--i > 0) {
                 bplus_tree_put(tree, i, 0);
         }
         bplus_tree_dump(tree);
 
         /* Reversed insertion and ordered deletion */
-        fprintf(stderr, "\nInsert 100 to 1, dump:\n");
-        for (i = MAX_KEY; i > 0; i--) {
+        fprintf(stderr, "\n-- Insert %d to 1, dump:\n", max_key);
+        for (i = max_key; i > 0; i--) {
                 bplus_tree_put(tree, i, i);
         }
         bplus_tree_dump(tree);
 
-        fprintf(stderr, "\nDelete 1 to 100, dump:\n");
-        for (i = 1; i <= MAX_KEY; i++) {
+        fprintf(stderr, "\n-- Delete 1 to %d, dump:\n", max_key);
+        for (i = 1; i <= max_key; i++) {
                 bplus_tree_put(tree, i, 0);
         }
         bplus_tree_dump(tree);
 
         /* Reversed insertion and reversed deletion */
-        fprintf(stderr, "\nInsert 100 to 1, dump:\n");
-        for (i = MAX_KEY; i > 0; i--) {
+        fprintf(stderr, "\n-- Insert %d to 1, dump:\n", max_key);
+        for (i = max_key; i > 0; i--) {
                 bplus_tree_put(tree, i, i);
         }
         bplus_tree_dump(tree);
 
-        fprintf(stderr, "\nDelete 100 to 1, dump:\n");
-        for (i = MAX_KEY; i > 0; i--) {
+        fprintf(stderr, "\n-- Delete %d to 1, dump:\n", max_key);
+        for (i = max_key; i > 0; i--) {
                 bplus_tree_put(tree, i, 0);
         }
         bplus_tree_dump(tree);
-#endif
 
+        /* Deinit b+tree */
         bplus_tree_deinit(tree);
 
         return 0;
