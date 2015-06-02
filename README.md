@@ -1,4 +1,4 @@
-bplus_tree
-==========
+B+Tree
+======
 
-A minimal B+Tree implementation for key-value store
+A minimal B+Tree implementation for key-value storage.
