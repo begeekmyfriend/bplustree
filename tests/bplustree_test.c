@@ -20,9 +20,10 @@ main(void)
         struct bplus_tree *tree;
 
         do {
-                fprintf(stdout, "Set b+tree max level (<= 10 e.g. 5): ");
+                fprintf(stderr, "Set b+tree level (<= 10 e.g. 5): ");
                 if ((i = getchar()) == '\n') {
                         level = 5;
+                        again = 0;
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &level);
@@ -38,9 +39,10 @@ main(void)
         } while (again);
 
         do {
-                fprintf(stdout, "Set b+tree max order (<= 1024 e.g. 7): ");
+                fprintf(stderr, "Set b+tree non-leaf order (<= 1024 e.g. 7): ");
                 if ((i = getchar()) == '\n') {
                         order = 7;
+                        again = 0;
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &order);
@@ -56,9 +58,10 @@ main(void)
         } while (again);
 
         do {
-                fprintf(stdout, "Set b+tree max entries (<= 4096 e.g. 10): ");
+                fprintf(stderr, "Set b+tree leaf entries (<= 4096 e.g. 10): ");
                 if ((i = getchar()) == '\n') {
                         entries = 10;
+                        again = 0;
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &entries);
@@ -77,6 +80,7 @@ main(void)
                 fprintf(stdout, "Set b+tree max key (e.g. 100): ");
                 if ((i = getchar()) == '\n') {
                         max_key = 100;
+                        again = 0;
                 } else {
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &max_key);
