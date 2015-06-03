@@ -5,6 +5,7 @@
 #ifndef _BPLUS_TREE_H
 #define _BPLUS_TREE_H
 
+#define MIN_ORDER        3
 #define MAX_ORDER        1024
 #define MAX_ENTRIES      4096
 #define MAX_LEVEL        10
@@ -42,7 +43,7 @@ struct bplus_tree {
 
 void bplus_tree_dump(struct bplus_tree *tree);
 int bplus_tree_get(struct bplus_tree *tree, int key);
-void bplus_tree_put(struct bplus_tree *tree, int key, int data);
+int bplus_tree_put(struct bplus_tree *tree, int key, int data);
 struct bplus_tree *bplus_tree_init(int level, int order, int entries);
 void bplus_tree_deinit(struct bplus_tree *tree);
 
