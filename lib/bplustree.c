@@ -212,7 +212,6 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
                                 fprintf(stderr, "!!Panic: Level exceeded, please expand the tree level, non-leaf order or leaf entries for element capacity!\n");
                                 node->next = sibling->next;
                                 non_leaf_delete(sibling);
-                                printf("node->children = %d\n", node->children);
                                 return -1;
                         }
                         /* new parent */
@@ -539,22 +538,11 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         borrow = l_sib->entries >= r_sib->entries ? BORROW_FROM_LEFT : BORROW_FROM_RIGHT;
                                 }
                         } else {
+                                assert(i == -1);
                                 i = -i - 1;
-                                if (i == 0) {
-                                        /* the frist node, no left sibling, choose right one */
-                                        sibling = (struct bplus_leaf *)parent->sub_ptr[i + 1];
-                                        borrow = BORROW_FROM_RIGHT;
-                                } else if (i == parent->children - 1) {
-                                        /* the last node, no right sibling, choose left one */
-                                        sibling = (struct bplus_leaf *)parent->sub_ptr[i - 1];
-                                        borrow = BORROW_FROM_LEFT;
-                                } else {
-                                        struct bplus_leaf *l_sib = (struct bplus_leaf *)parent->sub_ptr[i - 1];
-                                        struct bplus_leaf *r_sib = (struct bplus_leaf *)parent->sub_ptr[i + 1];
-                                        /* if both left and right sibling found, choose the one with more entries */
-                                        sibling = l_sib->entries >= r_sib->entries ? l_sib : r_sib;
-                                        borrow = l_sib->entries >= r_sib->entries ? BORROW_FROM_LEFT : BORROW_FROM_RIGHT;
-                                }
+                                /* the frist node, no left sibling, choose right one */
+                                sibling = (struct bplus_leaf *)parent->sub_ptr[i + 1];
+                                borrow = BORROW_FROM_RIGHT;
                         }
 
                         /* locate parent node key index */
