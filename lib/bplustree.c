@@ -672,7 +672,7 @@ bplus_tree_dump(struct bplus_tree *tree)
 {
         int i, j;
 
-        for (i = tree->level; i > 0; i--) {
+        for (i = tree->level - 1; i > 0; i--) {
                 struct bplus_non_leaf *node = (struct bplus_non_leaf *)tree->head[i];
                 if (node != NULL) {
                         printf("LEVEL %d:\n", i);
