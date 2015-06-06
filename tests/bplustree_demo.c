@@ -175,7 +175,7 @@ command_process(struct bplus_tree *tree)
         int c;
 
         for (; ;) {
-                fprintf(stderr, "\nPlease input oprational command ('h' or \"help\" for help): ");
+                fprintf(stderr, "\nPlease input operational command ('h' or \"help\" for help): ");
 
                 switch (c = getchar()) {
                 case EOF:
