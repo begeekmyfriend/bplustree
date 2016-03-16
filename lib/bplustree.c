@@ -255,7 +255,7 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         }
                         sibling->entries = j;
                         /* leaf insertion and its entry count stays unchanged(split + 1) */
-                        for (i = leaf->entries; i > insert; i--) {
+                        for (i = split - 1; i > insert; i--) {
                                 leaf->key[i] = leaf->key[i - 1];
                                 leaf->data[i] = leaf->data[i - 1];
                         }
@@ -598,7 +598,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         }
                                         sibling->entries--;
                                         /* adjust parent key */
-                                        parent->key[i] = sibling->key[0];
+                                        parent->key[i + 1] = sibling->key[0];
                                 } else {
                                         /* merge leaf node */
                                         for (j = leaf->entries, k = 0; k < sibling->entries; j++, k++) {
