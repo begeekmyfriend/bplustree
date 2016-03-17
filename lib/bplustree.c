@@ -127,58 +127,57 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
                 node->children = split + 1;
                 /* sibling node replication due to location of insertion */
                 if (insert < split) {
-                        i = split - 1, j = 0;
-                        split_key = node->key[i];
-                        sibling->sub_ptr[j] = node->sub_ptr[i + 1];
-                        node->sub_ptr[i + 1]->parent = sibling;
-                        i++;
-                        for (; i < tree->order - 1; i++, j++) {
+                        split_key = node->key[split - 1];
+                        /* sibling node's first sub-node */
+                        sibling->sub_ptr[0] = node->sub_ptr[split];
+                        node->sub_ptr[split]->parent = sibling;
+                        /* replicate splited elements to sibling node */
+                        for (i = split, j = 0; i < tree->order - 1; i++, j++) {
                                 sibling->key[j] = node->key[i];
                                 sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                                 node->sub_ptr[i + 1]->parent = sibling;
                         }
                         sibling->children = j + 1;
-                        /* node insertion and its children count stays unchanged(split + 1) */
-                        for (i = node->children - 1; i > insert; i--) {
+                        /* insert new key and sub-node */
+                        for (i = node->children - 2; i > insert; i--) {
                                 node->key[i] = node->key[i - 1];
                                 node->sub_ptr[i + 1] = node->sub_ptr[i];
                         }
                         node->key[i] = key;
                         node->sub_ptr[i + 1] = sub_node;
+                        sub_node->parent = node;
                 } else if (insert == split) {
-                        i = split, j = 0;
                         split_key = key;
-                        sibling->sub_ptr[j] = sub_node;
+                        /* sibling node's first sub-node */
+                        sibling->sub_ptr[0] = sub_node;
                         sub_node->parent = sibling;
-                        i++;
-                        for (; i < tree->order - 1; i++, j++) {
+                        /* replicate splited elements to sibling node */
+                        for (i = split, j = 0; i < tree->order - 1; i++, j++) {
                                 sibling->key[j] = node->key[i];
                                 sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                                 node->sub_ptr[i + 1]->parent = sibling;
                         }
                         sibling->children = j + 1;
                 } else {
-                        i = split, j = 0;
-                        split_key = node->key[i];
-                        sibling->sub_ptr[j] = node->sub_ptr[i + 1];
-                        node->sub_ptr[i + 1]->parent = sibling;
-                        i++;
-                        while (i < tree->order - 1) {
-                                if (j != insert - split) {
+                        split_key = node->key[split];
+                        /* sibling node's first sub-node */
+                        sibling->sub_ptr[0] = node->sub_ptr[split + 1];
+                        node->sub_ptr[split + 1]->parent = sibling;
+                        /* replicate splited elements to sibling node */
+                        for (i = split + 1, j = 0; i < tree->order - 1; j++) {
+                                if (j != insert - split - 1) {
                                         sibling->key[j] = node->key[i];
                                         sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                                         node->sub_ptr[i + 1]->parent = sibling;
                                         i++;
                                 }
-                                j++;
                         }
-                        /* sibling node children count */
-                        if (j > insert - split) {
+                        if (j > insert - split - 1) {
                                 sibling->children = j + 1;
                         } else {
-                                sibling->children = insert - split + 1;
+                                sibling->children = insert - split;
                         }
-                        /* insert new key */
+                        /* insert new key and sub-node*/
                         j = insert - split - 1;
                         sibling->key[j] = key;
                         sibling->sub_ptr[j + 1] = sub_node;
@@ -262,14 +261,12 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         leaf->key[i] = key;
                         leaf->data[i] = data;
                 } else {
-                        i = split, j = 0;
-                        while (i < tree->entries) {
+                        for (i = split, j = 0; i < tree->entries; j++) {
                                 if (j != insert - split) {
                                         sibling->key[j] = leaf->key[i];
                                         sibling->data[j] = leaf->data[i];
                                         i++;
                                 }
-                                j++;
                         }
                         /* sibling leaf entries */
                         if (j > insert - split) {
@@ -384,7 +381,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 borrow = l_sib->children >= r_sib->children ? BORROW_FROM_LEFT : BORROW_FROM_RIGHT;
                         }
 
-                        /* locate parent node key index for key adjustment */
+                        /* locate parent node key to adjust */
                         if (i > 0) {
                                 i = i - 1;
                         }
@@ -546,7 +543,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                 }
                         }
 
-                        /* locate parent node key index for key adjustment */
+                        /* locate parent node key to adjust */
                         if (i > 0) {
                                 i = i - 1;
                         }
