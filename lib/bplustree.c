@@ -742,69 +742,49 @@ bplus_tree_deinit(struct bplus_tree *tree)
         free(tree);
 }
 
-// ============================= CUSTOM FUNCTION ================== //
-
-int bplus_tree_range_get(struct bplus_tree *tree, int key,int keyR)
+int
+bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
 {
-    int i;
+    int i, data = 0;
+    int min = key1 <= key2 ? key1 : key2;
+    int max = min == key1 ? key2 : key1;
     struct bplus_node *node = tree->root;
     struct bplus_non_leaf *nln;
     struct bplus_leaf *ln;
 
-    while (node != NULL)
-    {
-        switch (node->type)
-        {
-        case BPLUS_TREE_NON_LEAF:
-            nln = (struct bplus_non_leaf *)node;
-            i = key_binary_search(nln->key, nln->children - 1, key);
-            if (i >= 0)
-            {
-                node = nln->sub_ptr[i + 1];
-            }
-            else
-            {
-                i = -i - 1;
-                node = nln->sub_ptr[i];
-            }
-            break;
-        case BPLUS_TREE_LEAF:
-            ln = (struct bplus_leaf *)node;
-            i = key_binary_search(ln->key, ln->entries, key);
-            if(i<0)
-            {
-                i=-i-1;
-            }
-            int cur_entries=ln->entries;
-            // must be less than total entries
-            assert(i<=cur_entries);
-            while(1)
-            {
-                if (i>=cur_entries)
-                {
-                    if(NULL==ln->next)
-                    {
-                        break;
+    while (node != NULL) {
+            switch (node->type) {
+            case BPLUS_TREE_NON_LEAF:
+                    nln = (struct bplus_non_leaf *)node;
+                    i = key_binary_search(nln->key, nln->children - 1, min);
+                    if (i >= 0) {
+                            node = nln->sub_ptr[i + 1];
+                    } else  {
+                            i = -i - 1;
+                            node = nln->sub_ptr[i];
                     }
-                    ln=ln->next;
-                    cur_entries=ln->entries;
-                    i=0;
-                }
-                if( /* ln->data[i] <= 0 ||*/ ln->data[i] > keyR )
-                {
                     break;
-                }
-                else
-                {
-                    //printf("%d ",ln->data[i]);
-                    i++;
-                }
+            case BPLUS_TREE_LEAF:
+                    ln = (struct bplus_leaf *)node;
+                    i = key_binary_search(ln->key, ln->entries, min);
+                    if (i < 0) {
+                            i = -i - 1;
+                            if (i >= ln->entries) {
+                                    ln = ln->next;
+                            }
+                    }
+                    while (ln != NULL && ln->key[i] <= max) {
+                            data = ln->data[i];
+                            if (++i >= ln->entries) {
+                                    ln = ln->next;
+                                    i = 0;
+                            }
+                    }
+                    return data;
+            default:
+                    assert(0);
             }
-            //printf("\n");
-            return 1;
-        default:
-            assert(0);
-        }
     }
+
     return 0;
 }
