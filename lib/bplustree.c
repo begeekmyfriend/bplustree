@@ -381,10 +381,8 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 borrow = l_sib->children >= r_sib->children ? BORROW_FROM_LEFT : BORROW_FROM_RIGHT;
                         }
 
-                        /* locate parent node key to adjust */
-                        if (i > 0) {
-                                i = i - 1;
-                        }
+                        /* locate parent node key to adjust, it is really tricky!! */
+                        i = i - 1;
 
                         if (borrow == BORROW_FROM_LEFT) {
                                 if (sibling->children > (tree->order + 1) / 2) {
@@ -435,12 +433,12 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 node->children--;
                                 if (sibling->children > (tree->order + 1) / 2) {
                                         /* left rotate key */
-                                        node->key[node->children - 1] = parent->key[i];
-                                        parent->key[i] = sibling->key[0];
-                                        node->children++;
+                                        node->key[node->children - 1] = parent->key[i + 1];
+                                        parent->key[i + 1] = sibling->key[0];
                                         /* move right sibling's first sub-node into node's last location */
-                                        node->sub_ptr[node->children - 1] = sibling->sub_ptr[0];
+                                        node->sub_ptr[node->children] = sibling->sub_ptr[0];
                                         sibling->sub_ptr[0]->parent = node;
+                                        node->children++;
                                         /* right sibling left shift */
                                         for (j = 0; j < sibling->children - 2; j++) {
                                                 sibling->key[j] = sibling->key[j + 1];
@@ -451,7 +449,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                         sibling->children--;
                                 } else {
                                         /* move parent key down */
-                                        node->key[node->children - 1] = parent->key[i];
+                                        node->key[node->children - 1] = parent->key[i + 1];
                                         node->children++;
                                         /* merge node and right sibling */
                                         for (j = node->children - 1, k = 0; k < sibling->children - 1; j++, k++) {
@@ -466,7 +464,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                         node->next = sibling->next;
                                         non_leaf_delete(sibling);
                                         /* trace upwards */
-                                        non_leaf_remove(tree, parent, i, level + 1);
+                                        non_leaf_remove(tree, parent, i + 1, level + 1);
                                 }
                         }
                         /* deletion finishes */
@@ -543,10 +541,8 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                 }
                         }
 
-                        /* locate parent node key to adjust */
-                        if (i > 0) {
-                                i = i - 1;
-                        }
+                        /* locate parent node key to adjust, it is really tricky!! */
+                        i = i - 1;
 
                         if (borrow == BORROW_FROM_LEFT) {
                                 if (sibling->entries > (tree->entries + 1) / 2) {
@@ -607,7 +603,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         leaf->next = sibling->next;
                                         leaf_delete(sibling);
                                         /* trace upwards */
-                                        non_leaf_remove(tree, parent, i, 1);
+                                        non_leaf_remove(tree, parent, i + 1, 1);
                                 }
                         }
                         /* deletion finishes */
@@ -744,4 +740,71 @@ void
 bplus_tree_deinit(struct bplus_tree *tree)
 {
         free(tree);
+}
+
+// ============================= CUSTOM FUNCTION ================== //
+
+int bplus_tree_range_get(struct bplus_tree *tree, int key,int keyR)
+{
+    int i;
+    struct bplus_node *node = tree->root;
+    struct bplus_non_leaf *nln;
+    struct bplus_leaf *ln;
+
+    while (node != NULL)
+    {
+        switch (node->type)
+        {
+        case BPLUS_TREE_NON_LEAF:
+            nln = (struct bplus_non_leaf *)node;
+            i = key_binary_search(nln->key, nln->children - 1, key);
+            if (i >= 0)
+            {
+                node = nln->sub_ptr[i + 1];
+            }
+            else
+            {
+                i = -i - 1;
+                node = nln->sub_ptr[i];
+            }
+            break;
+        case BPLUS_TREE_LEAF:
+            ln = (struct bplus_leaf *)node;
+            i = key_binary_search(ln->key, ln->entries, key);
+            if(i<0)
+            {
+                i=-i-1;
+            }
+            int cur_entries=ln->entries;
+            // must be less than total entries
+            assert(i<=cur_entries);
+            while(1)
+            {
+                if (i>=cur_entries)
+                {
+                    if(NULL==ln->next)
+                    {
+                        break;
+                    }
+                    ln=ln->next;
+                    cur_entries=ln->entries;
+                    i=0;
+                }
+                if( /* ln->data[i] <= 0 ||*/ ln->data[i] > keyR )
+                {
+                    break;
+                }
+                else
+                {
+                    //printf("%d ",ln->data[i]);
+                    i++;
+                }
+            }
+            //printf("\n");
+            return 1;
+        default:
+            assert(0);
+        }
+    }
+    return 0;
 }
