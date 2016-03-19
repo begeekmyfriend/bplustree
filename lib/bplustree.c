@@ -175,7 +175,7 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
                         if (j > insert - split - 1) {
                                 sibling->children = j + 1;
                         } else {
-                                sibling->children = insert - split;
+                                sibling->children = insert - split + 1;
                         }
                         /* insert new key and sub-node*/
                         j = insert - split - 1;
@@ -417,7 +417,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                                         j++;
                                                 }
                                         }
-                                        sibling->children = j + 1;
+                                        sibling->children = j;
                                         /* delete merged node */
                                         sibling->next = node->next;
                                         non_leaf_delete(node);
@@ -459,7 +459,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                                 node->sub_ptr[j] = sibling->sub_ptr[k];
                                                 sibling->sub_ptr[k]->parent = node;
                                         }
-                                        node->children = j + 1;
+                                        node->children = j;
                                         /* delete merged sibling */
                                         node->next = sibling->next;
                                         non_leaf_delete(sibling);
