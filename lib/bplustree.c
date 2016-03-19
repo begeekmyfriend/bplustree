@@ -410,14 +410,14 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                                         j++;
                                                 }
                                         }
-                                        for (j = sibling->children, k = 0; k < node->children - 1; k++) {
+                                        for (j = sibling->children, k = 0; k < node->children; k++) {
                                                 if (k != remove + 1) {
                                                         sibling->sub_ptr[j] = node->sub_ptr[k];
                                                         node->sub_ptr[k]->parent = sibling;
                                                         j++;
                                                 }
                                         }
-                                        sibling->children = j;
+                                        sibling->children = j + 1;
                                         /* delete merged node */
                                         sibling->next = node->next;
                                         non_leaf_delete(node);
@@ -459,7 +459,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                                 node->sub_ptr[j] = sibling->sub_ptr[k];
                                                 sibling->sub_ptr[k]->parent = node;
                                         }
-                                        node->children = j;
+                                        node->children = j + 1;
                                         /* delete merged sibling */
                                         node->next = sibling->next;
                                         non_leaf_delete(sibling);
