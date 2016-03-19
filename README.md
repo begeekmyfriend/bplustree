@@ -7,32 +7,19 @@ Demo
 ----
 
 ```shell
-mkdir build
-cd build
-cmake ..
-make
-./bin/bplustree_demo
+./demo_build.sh
 ```
 
 General Test
 ------------
 
 ```shell
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Test ..
-make
-./bin/bplustree_test
+./test_build.sh
 ```
 
 Code Coverage Test
 ------------------
 
 ```shell
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Coverage ..
-make coverage
+./coverage_build.sh
 ```
-
-And the code coverage report HTML file will be seen in `./build/coverage/index.html`.

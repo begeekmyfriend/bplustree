@@ -102,7 +102,6 @@ bplus_tree_search(struct bplus_tree *tree, int key)
                 }
         }
 
-        assert(0);
         return 0;
 }
 
@@ -636,6 +635,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                 leaf->data[remove] = leaf->data[remove + 1];
         }
         leaf->entries--;
+
         return 0;
 }
 

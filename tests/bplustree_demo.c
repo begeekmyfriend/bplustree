@@ -45,7 +45,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
         } while (again);
 
         do {
-                fprintf(stderr, "Set b+tree non-leaf order (2 < order <= 1024 e.g. 7): ");
+                fprintf(stderr, "Set b+tree non-leaf order (2 < order <= 64 e.g. 7): ");
                 if ((i = getchar()) == '\n') {
                         config->order = 7;
                         again = 0;
@@ -64,7 +64,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
         } while (again);
 
         do {
-                fprintf(stderr, "Set b+tree leaf entries (<= 4096 e.g. 10): ");
+                fprintf(stderr, "Set b+tree leaf entries (<= 64 e.g. 10): ");
                 if ((i = getchar()) == '\n') {
                         config->entries = 10;
                         again = 0;
@@ -167,6 +167,7 @@ command_tips(void)
         fprintf(stderr, "r, remove: Remove key number. E.g. r 1-100\n");
         fprintf(stderr, "f, find: Find the key number. E.g. f 41-60\n");
         fprintf(stderr, "d, dump: Dump the tree content.\n");
+        fprintf(stderr, "q, quit.\n");
 }
 
 static void
@@ -180,6 +181,7 @@ command_process(struct bplus_tree *tree)
                 switch (c = getchar()) {
                 case EOF:
                         fprintf(stderr, "\n");
+                case 'q':
                         return;
                 case 'h':
                         if ((c = getchar()) == '\n' ||
