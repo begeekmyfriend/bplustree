@@ -175,7 +175,7 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
                         if (j > insert - split - 1) {
                                 sibling->children = j + 1;
                         } else {
-                                assert(j == insert - split - 1) {
+                                assert(j == insert - split - 1);
                                 sibling->children = j + 2;
                         }
                         /* insert new key and sub-node*/
@@ -273,7 +273,7 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         if (j > insert - split) {
                                 sibling->entries = j;
                         } else {
-                                assert(j == insert - split) {
+                                assert(j == insert - split);
                                 sibling->entries = j + 1;
                         }
                         /* insert new key */
