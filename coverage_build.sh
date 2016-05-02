@@ -1,7 +1,7 @@
 #!/bin/sh
 rm -rf build
 mkdir build
-echo "Please wait about 10 seconds..."
+echo "Please wait about 10 seconds for test case generation..."
 python ./tests/testcase_generator.py
 mv testcase build
 cd build
