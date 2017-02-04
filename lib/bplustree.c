@@ -759,7 +759,9 @@ bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
 
 #ifdef _BPLUS_TREE_DEBUG
 struct node_backlog {
+        /* Node backlogged */
         struct bplus_node *node;
+        /* The index next to the backtrack point, must be >= 1 */
         int next_sub_idx;
 };
 
@@ -821,10 +823,13 @@ bplus_tree_dump(struct bplus_tree *tree)
 
         for (; ;) {
                 if (node != NULL) {
+                        /* On i==0, the node goes deep, otherwise goes backtracking */
                         int i = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
-                        p_nbl = NULL;  /* next_sub_idx should not be reusable */
 
-                        /* Log the node */
+                        /* Reset the backlogged node immediately */
+                        p_nbl = NULL;
+
+                        /* Backlog the node */
                         if (is_leaf(node) || i + 1 >= children(node)) {
                                 nbl.node = NULL;
                                 nbl.next_sub_idx = 0;
@@ -835,7 +840,7 @@ bplus_tree_dump(struct bplus_tree *tree)
                         nbl_push(&nbl, &top, &buttom);
                         level++;
 
-                        /* Draw lines */
+                        /* Draw lines each loop when the node goes deep */
                         if (i == 0) {
                                 int j;
                                 for (j = 1; j < level; j++) {
@@ -864,7 +869,7 @@ bplus_tree_dump(struct bplus_tree *tree)
                                 printf("\n");
                         }
 
-                        /* Move on */
+                        /* Move deep */
                         node = is_leaf(node) ? NULL : ((struct bplus_non_leaf *) node)->sub_ptr[i];
                 } else {
                         p_nbl = nbl_pop(&top, &buttom);
