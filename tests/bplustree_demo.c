@@ -26,7 +26,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
         fprintf(stderr, "\n-- B+tree setting...\n");
 
         do {
-                fprintf(stderr, "Set b+tree level (<= 10 e.g. 5): ");
+                fprintf(stderr, "Set b+tree level (<= %d e.g. 5): ", BPLUS_MAX_LEVEL);
                 if ((i = getchar()) == '\n') {
                         config->level = 5;
                         again = 0;
@@ -45,7 +45,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
         } while (again);
 
         do {
-                fprintf(stderr, "Set b+tree non-leaf order (2 < order <= 64 e.g. 7): ");
+                fprintf(stderr, "Set b+tree non-leaf order (%d < order <= %d e.g. 7): ", BPLUS_MIN_ORDER, BPLUS_MAX_ORDER);
                 if ((i = getchar()) == '\n') {
                         config->order = 7;
                         again = 0;
@@ -64,7 +64,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
         } while (again);
 
         do {
-                fprintf(stderr, "Set b+tree leaf entries (<= 64 e.g. 10): ");
+                fprintf(stderr, "Set b+tree leaf entries (<= %d e.g. 10): ", BPLUS_MAX_ENTRIES);
                 if ((i = getchar()) == '\n') {
                         config->entries = 10;
                         again = 0;
@@ -163,69 +163,38 @@ number_process(struct bplus_tree *tree, char op)
 static void
 command_tips(void)
 {
-        fprintf(stderr, "i, insert: Insert key number. E.g. i 1 4-7 9\n");
-        fprintf(stderr, "r, remove: Remove key number. E.g. r 1-100\n");
-        fprintf(stderr, "f, find: Find the key number. E.g. f 41-60\n");
-        fprintf(stderr, "d, dump: Dump the tree content.\n");
-        fprintf(stderr, "q, quit.\n");
+        fprintf(stderr, "i: Insert key number. E.g. i 1 4-7 9\n");
+        fprintf(stderr, "r: Remove key number. E.g. r 1-100\n");
+        fprintf(stderr, "f: Find the key number. E.g. f 41-60\n");
+        fprintf(stderr, "d: Dump the tree content.\n");
+        fprintf(stderr, "q: quit.\n");
 }
 
 static void
 command_process(struct bplus_tree *tree)
 {
         int c;
-
+        fprintf(stderr, "Please input command (Type 'h' for help): ");
         for (; ;) {
-                fprintf(stderr, "\nPlease input operational command ('h' or \"help\" for help): ");
-
                 switch (c = getchar()) {
                 case EOF:
                         fprintf(stderr, "\n");
                 case 'q':
                         return;
                 case 'h':
-                        if ((c = getchar()) == '\n' ||
-                                (c == 'e' && getchar() == 'l' && getchar() == 'p' &&
-                                ((c = getchar()) == ' ' || c == '\t' || c == '\n'))) {
-                                command_tips();
-                        }
-                        break;
-                case 'i':
-                        if (((c = getchar()) == ' ' || c == '\t') ||
-                                ((c = getchar()) == 'n' && getchar() == 's' && getchar() == 'e' &&
-                                getchar() == 'r' && getchar() == 't' &&
-                                ((c = getchar()) == ' ' || c == '\t'))) {
-                                if (number_process(tree, 'i') < 0) {
-                                        return;
-                                }
-                        }
-                        break;
-                case 'r':
-                        if (((c = getchar()) == ' ' || c == '\t') ||
-                                (c == 'e' && getchar() == 'm' && getchar() == 'o' &&
-                                getchar() == 'v' && getchar() == 'e' &&
-                                ((c = getchar()) == ' ' || c == '\t'))) {
-                                if (number_process(tree, 'r') < 0) {
-                                        return;
-                                }
-                        }
-                        break;
-                case 'f':
-                        if (((c = getchar()) == ' ' || c == '\t') ||
-                                (c == 'i' && getchar() == 'n' && getchar() == 'd' &&
-                                ((c = getchar()) == ' ' || c == '\t'))) {
-                                if (number_process(tree, 'f') < 0) {
-                                        return;
-                                }
-                        }
+                        command_tips();
                         break;
                 case 'd':
-                        if ((c = getchar()) == '\n' ||
-                                (c == 'u' && getchar() == 'm' && getchar() == 'p' &&
-                                ((c = getchar()) == ' ' || c == '\t' || c == '\n'))) {
-                                bplus_tree_dump(tree);
-                        }
+                        bplus_tree_dump(tree);
                         break;
+                case 'i':
+                case 'r':
+                case 'f':
+                        if (number_process(tree, c) < 0) {
+                                return;
+                        }
+                case '\n':
+                        fprintf(stderr, "Please input command (Type 'h' for help): ");
                 default:
                         break;
                 }

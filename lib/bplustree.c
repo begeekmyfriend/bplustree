@@ -765,19 +765,33 @@ struct node_backlog {
         int next_sub_idx;
 };
 
-static int inline
+static inline void
+nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
+{
+        if (*top - *buttom < BPLUS_MAX_LEVEL) {
+                (*(*top)++) = *nbl;
+        }
+}
+
+static inline struct node_backlog *
+nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
+{
+        return *top - *buttom > 0 ? --*top : NULL;
+}
+
+static inline int
 is_leaf(struct bplus_node *node)
 {
         return node->type == BPLUS_TREE_LEAF;
 }
 
-static int inline
+static inline int
 children(struct bplus_node *node)
 {
         return ((struct bplus_non_leaf *) node)->children;
 }
 
-static int inline
+static void
 key_print(struct bplus_node *node)
 {
         int i;
@@ -795,20 +809,6 @@ key_print(struct bplus_node *node)
                 }
         }
         printf("\n");
-}
-
-static void inline
-nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
-{
-        if (*top - *buttom < BPLUS_MAX_LEVEL) {
-                (*(*top)++) = *nbl;
-        }
-}
-
-static struct node_backlog *
-nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
-{
-        return *top - *buttom > 0 ? --*top : NULL;
 }
 
 void
@@ -845,28 +845,16 @@ bplus_tree_dump(struct bplus_tree *tree)
                                 int j;
                                 for (j = 1; j < level; j++) {
                                         if (j == level - 1) {
-                                                printf("%-8.8s", "+-------");
+                                                printf("%-8s", "+-------");
                                         } else {
                                                 if (nbl_stack[j - 1].node != NULL) {
-                                                        printf("%-8.8s", "|");
+                                                        printf("%-8s", "|");
                                                 } else {
-                                                        printf("%-8.8s", " ");
+                                                        printf("%-8s", " ");
                                                 }
                                         }
                                 }
                                 key_print(node);
-
-                                for (j = 1; j < level; j++) {
-                                        if (nbl_stack[j - 1].node != NULL) {
-                                                printf("%-8.8s", "|");
-                                        } else {
-                                                printf("%-8s", " ");
-                                        }
-                                }
-                                if (!is_leaf(node)) {
-                                        printf("|");
-                                }
-                                printf("\n");
                         }
 
                         /* Move deep */
