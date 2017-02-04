@@ -812,7 +812,6 @@ nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
 void
 bplus_tree_dump(struct bplus_tree *tree)
 {
-        int i = 0;
         int level = 0;
         struct bplus_node *node = tree->root;
         struct node_backlog nbl, *p_nbl = NULL;
@@ -822,8 +821,8 @@ bplus_tree_dump(struct bplus_tree *tree)
 
         for (; ;) {
                 if (node != NULL) {
-                        i = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
-                        p_nbl = NULL;
+                        int i = p_nbl != NULL ? p_nbl->next_sub_idx : -1;
+                        p_nbl = NULL;  /* next_sub_idx should not be reusable */
 
                         /* Log the node */
                         if (is_leaf(node) || i + 1 >= children(node)) {
@@ -837,7 +836,7 @@ bplus_tree_dump(struct bplus_tree *tree)
                         level++;
 
                         /* Draw lines */
-                        if (i == 0) {
+                        if (i == -1) {
                                 int j;
                                 for (j = 1; j < level; j++) {
                                         if (j == level - 1) {
@@ -851,6 +850,7 @@ bplus_tree_dump(struct bplus_tree *tree)
                                         }
                                 }
                                 key_print(node);
+
                                 for (j = 1; j < level; j++) {
                                         if (nbl_stack[j - 1].next_sub_idx != -1) {
                                                 printf("%-8.8s", "|");
