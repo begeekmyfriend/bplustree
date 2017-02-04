@@ -821,13 +821,13 @@ bplus_tree_dump(struct bplus_tree *tree)
 
         for (; ;) {
                 if (node != NULL) {
-                        int i = p_nbl != NULL ? p_nbl->next_sub_idx : -1;
+                        int i = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
                         p_nbl = NULL;  /* next_sub_idx should not be reusable */
 
                         /* Log the node */
                         if (is_leaf(node) || i + 1 >= children(node)) {
                                 nbl.node = NULL;
-                                nbl.next_sub_idx = -1;
+                                nbl.next_sub_idx = 0;
                         } else {
                                 nbl.node = node;
                                 nbl.next_sub_idx = i + 1;
@@ -836,13 +836,13 @@ bplus_tree_dump(struct bplus_tree *tree)
                         level++;
 
                         /* Draw lines */
-                        if (i == -1) {
+                        if (i == 0) {
                                 int j;
                                 for (j = 1; j < level; j++) {
                                         if (j == level - 1) {
                                                 printf("%-8.8s", "+-------");
                                         } else {
-                                                if (nbl_stack[j - 1].next_sub_idx != -1) {
+                                                if (nbl_stack[j - 1].node != NULL) {
                                                         printf("%-8.8s", "|");
                                                 } else {
                                                         printf("%-8.8s", " ");
@@ -852,7 +852,7 @@ bplus_tree_dump(struct bplus_tree *tree)
                                 key_print(node);
 
                                 for (j = 1; j < level; j++) {
-                                        if (nbl_stack[j - 1].next_sub_idx != -1) {
+                                        if (nbl_stack[j - 1].node != NULL) {
                                                 printf("%-8.8s", "|");
                                         } else {
                                                 printf("%-8s", " ");
