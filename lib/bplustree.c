@@ -214,7 +214,6 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
                         parent->children = 2;
                         /* update root */
                         tree->root = (struct bplus_node *)parent;
-                        tree->head[level] = (struct bplus_node *)parent;
                         node->parent = parent;
                         sibling->parent = parent;
                 } else {
@@ -308,7 +307,6 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         parent->children = 2;
                         /* update root */
                         tree->root = (struct bplus_node *)parent;
-                        tree->head[1] = (struct bplus_node *)parent;
                         leaf->parent = parent;
                         sibling->parent = parent;
                 } else {
@@ -354,7 +352,6 @@ bplus_tree_insert(struct bplus_tree *tree, int key, int data)
         root->key[0] = key;
         root->data[0] = data;
         root->entries = 1;
-        tree->head[0] = (struct bplus_node *)root;
         tree->root = (struct bplus_node *)root;
         return 0;
 }
@@ -483,7 +480,6 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 assert(remove == 0);
                                 node->sub_ptr[0]->parent = NULL;
                                 tree->root = node->sub_ptr[0];
-                                tree->head[level] = NULL;
                                 non_leaf_delete(node);
                                 return;
                         }
@@ -619,10 +615,9 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                         return 0;
                 } else {
                         if (leaf->entries == 1) {
-                                /* delete the only last node */
+                                /* delete the onbly last node */
                                 assert(key == leaf->key[0]);
                                 tree->root = NULL;
-                                tree->head[0] = NULL;
                                 leaf_delete(leaf);
                                 return 0;
                         }
@@ -670,42 +665,6 @@ bplus_tree_delete(struct bplus_tree *tree, int key)
         return -1;
 }
 
-void
-bplus_tree_dump(struct bplus_tree *tree)
-{
-        int i, j;
-
-        for (i = tree->level - 1; i > 0; i--) {
-                struct bplus_non_leaf *node = (struct bplus_non_leaf *)tree->head[i];
-                if (node != NULL) {
-                        printf("LEVEL %d:\n", i);
-                        while (node != NULL) {
-                                printf("node: ");
-                                for (j = 0; j < node->children - 1; j++) {
-                                        printf("%d ", node->key[j]);
-                                }
-                                printf("\n");
-                                node = node->next;
-                        }
-                }
-        }
-
-        struct bplus_leaf *leaf = (struct bplus_leaf *)tree->head[0];
-        if (leaf != NULL) {
-                printf("LEVEL 0:\n");
-                while (leaf != NULL) {
-                        printf("leaf: ");
-                        for (j = 0; j < leaf->entries; j++) {
-                                printf("%d ", leaf->key[j]);
-                        }
-                        printf("\n");
-                        leaf = leaf->next;
-                }
-        } else {
-                printf("Empty tree!\n");
-        }
-}
-
 int
 bplus_tree_get(struct bplus_tree *tree, int key)
 {
@@ -731,8 +690,8 @@ struct bplus_tree *
 bplus_tree_init(int level, int order, int entries)
 {
         /* The max order of non leaf nodes must be more than two */
-        assert(MAX_ORDER > MIN_ORDER);
-        assert(level <= MAX_LEVEL && order <= MAX_ORDER && entries <= MAX_ENTRIES);
+        assert(BPLUS_MAX_ORDER > BPLUS_MIN_ORDER);
+        assert(level <= BPLUS_MAX_LEVEL && order <= BPLUS_MAX_ORDER && entries <= BPLUS_MAX_ENTRIES);
 
         struct bplus_tree *tree = malloc(sizeof(*tree));
         if (tree != NULL) {
@@ -740,7 +699,6 @@ bplus_tree_init(int level, int order, int entries)
                 tree->level = level;
                 tree->order = order;
                 tree->entries = entries;
-                memset(tree->head, 0, MAX_LEVEL * sizeof(struct bplus_node *));
         }
 
         return tree;
@@ -798,3 +756,125 @@ bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
 
     return 0;
 }
+
+#ifdef _BPLUS_TREE_DEBUG
+struct node_backlog {
+        struct bplus_node *node;
+        int next_sub_idx;
+};
+
+static int inline
+is_leaf(struct bplus_node *node)
+{
+        return node->type == BPLUS_TREE_LEAF;
+}
+
+static int inline
+children(struct bplus_node *node)
+{
+        return ((struct bplus_non_leaf *) node)->children;
+}
+
+static int inline
+key_print(struct bplus_node *node)
+{
+        int i;
+        if (is_leaf(node)) {
+                struct bplus_leaf *leaf = (struct bplus_leaf *) node;
+                printf("leaf:");
+                for (i = 0; i < leaf->entries; i++) {
+                        printf(" %d", leaf->key[i]);
+                }
+        } else {
+                struct bplus_non_leaf *non_leaf = (struct bplus_non_leaf *) node;
+                printf("node:");
+                for (i = 0; i < non_leaf->children - 1; i++) {
+                        printf(" %d", non_leaf->key[i]);
+                }
+        }
+        printf("\n");
+}
+
+static void inline
+nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
+{
+        if (*top - *buttom < BPLUS_MAX_LEVEL) {
+                (*(*top)++) = *nbl;
+        }
+}
+
+static struct node_backlog *
+nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
+{
+        return *top - *buttom > 0 ? --*top : NULL;
+}
+
+void
+bplus_tree_dump(struct bplus_tree *tree)
+{
+        int i = 0;
+        int level = 0;
+        struct bplus_node *node = tree->root;
+        struct node_backlog nbl, *p_nbl = NULL;
+        struct node_backlog *top, *buttom, nbl_stack[BPLUS_MAX_LEVEL];
+
+        top = buttom = nbl_stack;
+
+        for (; ;) {
+                if (node != NULL) {
+                        i = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
+                        p_nbl = NULL;
+
+                        /* Log the node */
+                        if (is_leaf(node) || i + 1 >= children(node)) {
+                                nbl.node = NULL;
+                                nbl.next_sub_idx = -1;
+                        } else {
+                                nbl.node = node;
+                                nbl.next_sub_idx = i + 1;
+                        }
+                        nbl_push(&nbl, &top, &buttom);
+                        level++;
+
+                        /* Draw lines */
+                        if (i == 0) {
+                                int j;
+                                for (j = 1; j < level; j++) {
+                                        if (j == level - 1) {
+                                                printf("%-8.8s", "+-------");
+                                        } else {
+                                                if (nbl_stack[j - 1].next_sub_idx != -1) {
+                                                        printf("%-8.8s", "|");
+                                                } else {
+                                                        printf("%-8.8s", " ");
+                                                }
+                                        }
+                                }
+                                key_print(node);
+                                for (j = 1; j < level; j++) {
+                                        if (nbl_stack[j - 1].next_sub_idx != -1) {
+                                                printf("%-8.8s", "|");
+                                        } else {
+                                                printf("%-8s", " ");
+                                        }
+                                }
+                                if (!is_leaf(node)) {
+                                        printf("|");
+                                }
+                                printf("\n");
+                        }
+
+                        /* Move on */
+                        node = is_leaf(node) ? NULL : ((struct bplus_non_leaf *) node)->sub_ptr[i];
+                } else {
+                        p_nbl = nbl_pop(&top, &buttom);
+                        if (p_nbl == NULL) {
+                                /* End of traversal */
+                                break;
+                        }
+                        node = p_nbl->node;
+                        level--;
+                }
+        }
+}
+#endif

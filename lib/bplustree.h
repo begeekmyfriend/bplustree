@@ -5,10 +5,10 @@
 #ifndef _BPLUS_TREE_H
 #define _BPLUS_TREE_H
 
-#define MIN_ORDER        3
-#define MAX_ORDER        64
-#define MAX_ENTRIES      64
-#define MAX_LEVEL        10
+#define BPLUS_MIN_ORDER     3
+#define BPLUS_MAX_ORDER     64
+#define BPLUS_MAX_ENTRIES   64
+#define BPLUS_MAX_LEVEL     10
 
 struct bplus_node {
         int type;
@@ -20,8 +20,8 @@ struct bplus_non_leaf {
         struct bplus_non_leaf *parent;
         struct bplus_non_leaf *next;
         int children;
-        int key[MAX_ORDER - 1];
-        struct bplus_node *sub_ptr[MAX_ORDER];
+        int key[BPLUS_MAX_ORDER - 1];
+        struct bplus_node *sub_ptr[BPLUS_MAX_ORDER];
 };
 
 struct bplus_leaf {
@@ -29,8 +29,8 @@ struct bplus_leaf {
         struct bplus_non_leaf *parent;
         struct bplus_leaf *next;
         int entries;
-        int key[MAX_ENTRIES];
-        int data[MAX_ENTRIES];
+        int key[BPLUS_MAX_ENTRIES];
+        int data[BPLUS_MAX_ENTRIES];
 };
 
 struct bplus_tree {
@@ -38,7 +38,6 @@ struct bplus_tree {
         int entries;
         int level;
         struct bplus_node *root;
-        struct bplus_node *head[MAX_LEVEL];
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);

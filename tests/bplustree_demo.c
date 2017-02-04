@@ -36,7 +36,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
                         if (!ret || getchar() != '\n') {
                                 stdin_flush();
                                 again = 1;
-                        } else if (config->level > MAX_LEVEL) {
+                        } else if (config->level > BPLUS_MAX_LEVEL) {
                                 again = 1;
                         } else {
                                 again = 0;
@@ -55,7 +55,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
                         if (!ret || getchar() != '\n') {
                                 stdin_flush();
                                 again = 1;
-                        } else if (config->order < MIN_ORDER || config->order > MAX_ORDER) {
+                        } else if (config->order < BPLUS_MIN_ORDER || config->order > BPLUS_MAX_ORDER) {
                                 again = 1;
                         } else {
                                 again = 0;
@@ -74,7 +74,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
                         if (!ret || getchar() != '\n') {
                                 stdin_flush();
                                 again = 1;
-                        } else if (config->entries > MAX_ENTRIES) {
+                        } else if (config->entries > BPLUS_MAX_ENTRIES) {
                                 again = 1;
                         } else {
                                 again = 0;
