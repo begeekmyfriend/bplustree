@@ -823,31 +823,31 @@ bplus_tree_dump(struct bplus_tree *tree)
 
         for (; ;) {
                 if (node != NULL) {
-                        /* On i==0, the node goes deep, otherwise goes backtracking */
-                        int i = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
-
-                        /* Reset the backlogged node immediately */
+                        /* Fetch the pop-up backlogged node's sub-id.
+                         * If not backlogged, fetch the first sub-id. */
+                        int sub_idx = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
+                        /* Reset backlog for the node has gone deep down */
                         p_nbl = NULL;
 
                         /* Backlog the node */
-                        if (is_leaf(node) || i + 1 >= children(node)) {
+                        if (is_leaf(node) || sub_idx + 1 >= children(node)) {
                                 nbl.node = NULL;
                                 nbl.next_sub_idx = 0;
                         } else {
                                 nbl.node = node;
-                                nbl.next_sub_idx = i + 1;
+                                nbl.next_sub_idx = sub_idx + 1;
                         }
                         nbl_push(&nbl, &top, &buttom);
                         level++;
 
-                        /* Draw lines each loop when the node goes deep */
-                        if (i == 0) {
-                                int j;
-                                for (j = 1; j < level; j++) {
-                                        if (j == level - 1) {
+                        /* Draw lines as long as sub_idx is the first one */
+                        if (sub_idx == 0) {
+                                int i;
+                                for (i = 1; i < level; i++) {
+                                        if (i == level - 1) {
                                                 printf("%-8s", "+-------");
                                         } else {
-                                                if (nbl_stack[j - 1].node != NULL) {
+                                                if (nbl_stack[i - 1].node != NULL) {
                                                         printf("%-8s", "|");
                                                 } else {
                                                         printf("%-8s", " ");
@@ -857,8 +857,8 @@ bplus_tree_dump(struct bplus_tree *tree)
                                 key_print(node);
                         }
 
-                        /* Move deep */
-                        node = is_leaf(node) ? NULL : ((struct bplus_non_leaf *) node)->sub_ptr[i];
+                        /* Move deep down */
+                        node = is_leaf(node) ? NULL : ((struct bplus_non_leaf *) node)->sub_ptr[sub_idx];
                 } else {
                         p_nbl = nbl_pop(&top, &buttom);
                         if (p_nbl == NULL) {
