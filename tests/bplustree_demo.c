@@ -112,7 +112,7 @@ number_process(struct bplus_tree *tree, char op)
         while ((c = getchar()) != EOF) {
                 if (c == ' ' || c == '\t' || c == '\n') {
                         if (start != 0) {
-                                if (n >= start) {
+                                if (n >= 0) {
                                         end = n;
                                 } else {
                                         n = 0;
@@ -120,8 +120,14 @@ number_process(struct bplus_tree *tree, char op)
                         }
 
                         if (start != 0 && end != 0) {
-                                for (n = start; n <= end; n++) {
-                                        _proc(tree, op, n);
+                                if (start <= end) {
+                                        for (n = start; n <= end; n++) {
+                                                _proc(tree, op, n);
+                                        }
+                                } else {
+                                        for (n = start; n >= end; n--) {
+                                                _proc(tree, op, n);
+                                        }
                                 }
                         } else {
                                 if (n != 0) {
