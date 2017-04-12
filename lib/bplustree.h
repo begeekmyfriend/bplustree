@@ -40,10 +40,25 @@ static inline void list_add(struct bplus_link *link, struct bplus_link *prev)
         __list_add(link, prev, prev->next);
 }
 
+static inline void list_add_tail(struct bplus_link *link, struct bplus_link *head)
+{
+	__list_add(link, head->prev, head);
+}
+
 static inline void list_del(struct bplus_link *link)
 {
         __list_del(link->prev, link->next);
         list_init(link);
+}
+
+static inline int list_is_first(struct bplus_link *link, struct bplus_link *head)
+{
+	return link->prev == head;
+}
+
+static inline int list_is_last(struct bplus_link *link, struct bplus_link *head)
+{
+	return link->next == head;
 }
 
 #define list_entry(ptr, type, member) \
@@ -63,12 +78,14 @@ static inline void list_del(struct bplus_link *link)
 
 struct bplus_node {
         int type;
+        int parent_key_idx;
         struct bplus_non_leaf *parent;
         struct bplus_link link;
 };
 
 struct bplus_non_leaf {
         int type;
+        int parent_key_idx;
         struct bplus_non_leaf *parent;
         struct bplus_link link;
         int children;
@@ -78,6 +95,7 @@ struct bplus_non_leaf {
 
 struct bplus_leaf {
         int type;
+        int parent_key_idx;
         struct bplus_non_leaf *parent;
         struct bplus_link link;
         int entries;
