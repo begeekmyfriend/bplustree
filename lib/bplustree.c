@@ -681,12 +681,12 @@ bplus_tree_put(struct bplus_tree *tree, int key, int data)
 }
 
 struct bplus_tree *
-bplus_tree_init(int level, int order, int entries)
+bplus_tree_init(int order, int entries)
 {
         int i;
         /* The max order of non leaf nodes must be more than two */
         assert(BPLUS_MAX_ORDER > BPLUS_MIN_ORDER);
-        assert(level <= BPLUS_MAX_LEVEL && order <= BPLUS_MAX_ORDER && entries <= BPLUS_MAX_ENTRIES);
+        assert(order <= BPLUS_MAX_ORDER && entries <= BPLUS_MAX_ENTRIES);
 
         struct bplus_tree *tree = calloc(1, sizeof(*tree));
         if (tree != NULL) {

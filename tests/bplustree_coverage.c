@@ -5,7 +5,6 @@
 #include "bplustree.h"
 
 struct bplus_tree_config {
-        int level;
         int order;
         int entries;
 };
@@ -154,11 +153,10 @@ void exec_file(char *file, struct bplus_tree *tree)
 int main(void)
 {
         struct bplus_tree_config config;
-        config.level=10;
         config.order=64;
         config.entries=64;
 
-        struct bplus_tree *tree = bplus_tree_init(config.level, config.order, config.entries);
+        struct bplus_tree *tree = bplus_tree_init(config.order, config.entries);
 
         exec_file("testcase", tree);
 

@@ -4,13 +4,11 @@
 #include "bplustree.h"
 
 struct bplus_tree_config {
-        int level;
         int order;
         int entries;
 }; 
 
-static void
-stdin_flush(void)
+static void stdin_flush(void)
 {
         int c;
         while ((c = getchar()) != '\n' && c != EOF) {
@@ -18,31 +16,11 @@ stdin_flush(void)
         }
 }
 
-static struct bplus_tree_config *
-bplus_tree_setting(struct bplus_tree_config *config)
+static struct bplus_tree_config * bplus_tree_setting(struct bplus_tree_config *config)
 {
         int i, ret, again;
 
         fprintf(stderr, "\n-- B+tree setting...\n");
-
-        do {
-                fprintf(stderr, "Set b+tree level (<= %d e.g. 5): ", BPLUS_MAX_LEVEL);
-                if ((i = getchar()) == '\n') {
-                        config->level = 5;
-                        again = 0;
-                } else {
-                        ungetc(i, stdin);
-                        ret = fscanf(stdin, "%d", &config->level);
-                        if (!ret || getchar() != '\n') {
-                                stdin_flush();
-                                again = 1;
-                        } else if (config->level > BPLUS_MAX_LEVEL) {
-                                again = 1;
-                        } else {
-                                again = 0;
-                        }
-                }
-        } while (again);
 
         do {
                 fprintf(stderr, "Set b+tree non-leaf order (%d < order <= %d e.g. 7): ", BPLUS_MIN_ORDER, BPLUS_MAX_ORDER);
@@ -85,8 +63,7 @@ bplus_tree_setting(struct bplus_tree_config *config)
         return config;
 }
 
-static void
-_proc(struct bplus_tree *tree, char op, int n)
+static void _proc(struct bplus_tree *tree, char op, int n)
 {
         switch (op) {
                 case 'i':
@@ -103,8 +80,7 @@ _proc(struct bplus_tree *tree, char op, int n)
         }       
 }
 
-static int
-number_process(struct bplus_tree *tree, char op)
+static int number_process(struct bplus_tree *tree, char op)
 {
         int c, n = 0;
         int start = 0, end = 0;
@@ -166,8 +142,7 @@ number_process(struct bplus_tree *tree, char op)
         return -1;
 }
 
-static void
-command_tips(void)
+static void command_tips(void)
 {
         fprintf(stderr, "i: Insert key number. E.g. i 1 4-7 9\n");
         fprintf(stderr, "r: Remove key number. E.g. r 1-100\n");
@@ -176,8 +151,7 @@ command_tips(void)
         fprintf(stderr, "q: quit.\n");
 }
 
-static void
-command_process(struct bplus_tree *tree)
+static void command_process(struct bplus_tree *tree)
 {
         int c;
         fprintf(stderr, "Please input command (Type 'h' for help): ");
@@ -207,8 +181,7 @@ command_process(struct bplus_tree *tree)
         }
 }
 
-int
-main(void)
+int main(void)
 {
         struct bplus_tree *tree;
         struct bplus_tree_config config;
@@ -217,7 +190,7 @@ main(void)
         bplus_tree_setting(&config);
 
         /* Init b+tree */
-        tree = bplus_tree_init(config.level, config.order, config.entries);
+        tree = bplus_tree_init(config.order, config.entries);
         if (tree == NULL) {
                 fprintf(stderr, "Init failure!\n");
                 exit(-1);

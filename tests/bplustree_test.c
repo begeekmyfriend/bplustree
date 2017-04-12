@@ -4,13 +4,11 @@
 #include "bplustree.h"
 
 struct bplus_tree_config {
-        int level;
         int order;
         int entries;
 }; 
 
-static void
-bplus_tree_get_put_test(struct bplus_tree *tree)
+static void bplus_tree_get_put_test(struct bplus_tree *tree)
 {
         int i;
 
@@ -76,8 +74,7 @@ bplus_tree_get_put_test(struct bplus_tree *tree)
         fprintf(stderr, "key:100 data:%d\n", bplus_tree_get(tree, 100));
 }
 
-static void
-bplus_tree_insert_delete_test(struct bplus_tree *tree)
+static void bplus_tree_insert_delete_test(struct bplus_tree *tree)
 {
         int i, max_key = 100;
 
@@ -136,8 +133,7 @@ bplus_tree_insert_delete_test(struct bplus_tree *tree)
         bplus_tree_dump(tree);
 }
 
-static void
-bplus_tree_normal_test(void)
+static void bplus_tree_normal_test(void)
 {
         struct bplus_tree *tree;
         struct bplus_tree_config config;
@@ -145,10 +141,9 @@ bplus_tree_normal_test(void)
         fprintf(stderr, "\n>>> B+tree normal test.\n");
 
         /* Init b+tree */
-        config.level = 5;
         config.order = 7;
         config.entries = 10;
-        tree = bplus_tree_init(config.level, config.order, config.entries);
+        tree = bplus_tree_init(config.order, config.entries);
         if (tree == NULL) {
                 fprintf(stderr, "Init failure!\n");
                 exit(-1);
@@ -164,52 +159,7 @@ bplus_tree_normal_test(void)
         bplus_tree_deinit(tree);
 }
 
-//static void
-//bplus_tree_abnormal_test(void)
-//{
-//        int i, max_key = 100;
-//        struct bplus_tree *tree;
-//        struct bplus_tree_config config;
-//
-//        fprintf(stderr, "\n>>> B+tree abnormal test.\n");
-//
-//        /* Out of max level */
-//        config.level = 1;
-//        config.order = MIN_ORDER;
-//        config.entries = MIN_ORDER - 1;
-//        tree = bplus_tree_init(config.level, config.order, config.entries);
-//        if (tree == NULL) {
-//                fprintf(stderr, "Init failure!\n");
-//                exit(-1);
-//        }
-//
-//        fprintf(stderr, "-- Insert 1 to %d, dump:\n", max_key);
-//        for (i = 1; i <= max_key; i++) {
-//                if (bplus_tree_put(tree, i, i) < 0) {
-//                        break;
-//                }
-//        }
-//        bplus_tree_dump(tree);
-//
-//        fprintf(stderr, "\n-- Delete key 2, dump:\n");
-//        bplus_tree_put(tree, 2, 0);
-//        bplus_tree_dump(tree);
-//
-//        fprintf(stderr, "\n-- Delete key 3, dump:\n");
-//        bplus_tree_put(tree, 3, 0);
-//        bplus_tree_dump(tree);
-//
-//        fprintf(stderr, "\n-- Delete 1 to %d, dump:\n", max_key);
-//        for (i = 1; i <= max_key; i++) {
-//                bplus_tree_put(tree, i, 0);
-//        }
-//        bplus_tree_dump(tree);
-//
-//        bplus_tree_deinit(tree);
-//}
-
-int
-main(void)
+int main(void)
 {
         bplus_tree_normal_test();
         //bplus_tree_abnormal_test();
