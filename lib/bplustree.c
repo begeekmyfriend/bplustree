@@ -381,7 +381,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                 struct bplus_non_leaf *parent = node->parent;
                 if (parent != NULL) {
                         int borrow = 0;
-                        /* find which sibling node with same parent to be borrowed from */
+                        /* decide which sibling to be borrowed from */
                         i = node->parent_key_idx;
                         if (i == -1) {
                                 /* the frist sub-node, no left sibling, choose the right one */
@@ -392,7 +392,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 sibling = list_prev_entry(node, link);
                                 borrow = LEFT_SIBLING;
                         } else {
-                                /* if both left and right sibling found, choose the one with more entries */
+                                /* if both left and right sibling found, choose the one with more children */
                                 struct bplus_non_leaf *l_sib = list_prev_entry(node, link);
                                 struct bplus_non_leaf *r_sib = list_next_entry(node, link);
                                 sibling = l_sib->children >= r_sib->children ? l_sib : r_sib;
@@ -527,7 +527,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                 struct bplus_non_leaf *parent = leaf->parent;
                 if (parent != NULL) {
                         int borrow = 0;
-                        /* find which sibling node with same parent to be borrowed from */
+                        /* decide which sibling to be borrowed from */
                         i = leaf->parent_key_idx;
                         if (i == -1) {
                                 /* the frist sub-node, no left sibling, choose the right one */
@@ -795,15 +795,13 @@ key_print(struct bplus_node *node)
         int i;
         if (is_leaf(node)) {
                 struct bplus_leaf *leaf = (struct bplus_leaf *) node;
-                //printf("leaf:");
-                printf("leaf(%d):",leaf->parent_key_idx);
+                printf("leaf:");
                 for (i = 0; i < leaf->entries; i++) {
                         printf(" %d", leaf->key[i]);
                 }
         } else {
                 struct bplus_non_leaf *non_leaf = (struct bplus_non_leaf *) node;
-                //printf("node:");
-                printf("node(%d):",node->parent_key_idx);
+                printf("node:");
                 for (i = 0; i < non_leaf->children - 1; i++) {
                         printf(" %d", non_leaf->key[i]);
                 }
