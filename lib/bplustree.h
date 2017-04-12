@@ -64,6 +64,7 @@ static inline void list_del(struct bplus_link *link)
 struct bplus_node {
         int type;
         struct bplus_non_leaf *parent;
+        struct bplus_link link;
 };
 
 struct bplus_non_leaf {
@@ -89,6 +90,7 @@ struct bplus_tree {
         int entries;
         int level;
         struct bplus_node *root;
+        struct bplus_link list[BPLUS_MAX_LEVEL];
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);

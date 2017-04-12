@@ -62,12 +62,14 @@ leaf_new(void)
 static void
 non_leaf_delete(struct bplus_non_leaf *node)
 {
+        list_del(&node->link);
         free(node);
 }
 
 static void
 leaf_delete(struct bplus_leaf *node)
 {
+        list_del(&node->link);
         free(node);
 }
 
@@ -201,12 +203,6 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
         if (split) {
                 struct bplus_non_leaf *parent = node->parent;
                 if (parent == NULL) {
-                        if (++level >= tree->level) {
-                                fprintf(stderr, "!!Panic: Level exceeded, please expand the tree level, non-leaf order or leaf entries for element capacity!\n");
-                                list_del(&sibling->link);
-                                non_leaf_delete(sibling);
-                                return -1;
-                        }
                         /* new parent */
                         parent = non_leaf_new();
                         parent->key[0] = split_key;
@@ -215,6 +211,7 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node, struct bpl
                         parent->children = 2;
                         /* update root */
                         tree->root = (struct bplus_node *)parent;
+                        list_add(&parent->link, &tree->list[++tree->level]);
                         node->parent = parent;
                         sibling->parent = parent;
                 } else {
@@ -307,12 +304,12 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         parent->children = 2;
                         /* update root */
                         tree->root = (struct bplus_node *)parent;
+                        list_add(&parent->link, &tree->list[++tree->level]);
                         leaf->parent = parent;
                         sibling->parent = parent;
                 } else {
-                        /* trace upwards */
                         sibling->parent = parent;
-                        return non_leaf_insert(tree, parent, (struct bplus_node *)sibling, sibling->key[0], 1);
+                        return non_leaf_insert(tree, parent, (struct bplus_node *) sibling, sibling->key[0], 1);
                 }
         }
 
@@ -353,6 +350,7 @@ bplus_tree_insert(struct bplus_tree *tree, int key, int data)
         root->data[0] = data;
         root->entries = 1;
         tree->root = (struct bplus_node *)root;
+        list_add(&root->link, &tree->list[tree->level]);
         return 0;
 }
 
@@ -424,7 +422,6 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                         }
                                         sibling->children = j;
                                         /* delete merged node */
-                                        list_del(&node->link);
                                         non_leaf_delete(node);
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i, level + 1);
@@ -466,7 +463,6 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                         }
                                         node->children = j;
                                         /* delete merged sibling */
-                                        list_del(&sibling->link);
                                         non_leaf_delete(sibling);
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i + 1, level + 1);
@@ -572,7 +568,6 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         }
                                         sibling->entries = j;
                                         /* delete merged leaf */
-                                        list_del(&leaf->link);
                                         leaf_delete(leaf);
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i, 1);
@@ -605,7 +600,6 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         }
                                         leaf->entries = j;
                                         /* delete right sibling */
-                                        list_del(&sibling->link);
                                         leaf_delete(sibling);
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i + 1, 1);
@@ -689,16 +683,19 @@ bplus_tree_put(struct bplus_tree *tree, int key, int data)
 struct bplus_tree *
 bplus_tree_init(int level, int order, int entries)
 {
+        int i;
         /* The max order of non leaf nodes must be more than two */
         assert(BPLUS_MAX_ORDER > BPLUS_MIN_ORDER);
         assert(level <= BPLUS_MAX_LEVEL && order <= BPLUS_MAX_ORDER && entries <= BPLUS_MAX_ENTRIES);
 
-        struct bplus_tree *tree = malloc(sizeof(*tree));
+        struct bplus_tree *tree = calloc(1, sizeof(*tree));
         if (tree != NULL) {
                 tree->root = NULL;
-                tree->level = level;
                 tree->order = order;
                 tree->entries = entries;
+                for (i = 0; i < BPLUS_MAX_LEVEL; i++) {
+                        list_init(&tree->list[i]);
+                }
         }
 
         return tree;
