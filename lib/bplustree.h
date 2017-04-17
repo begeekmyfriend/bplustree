@@ -10,18 +10,18 @@
 #define BPLUS_MAX_ENTRIES   64
 #define BPLUS_MAX_LEVEL     10
 
-struct bplus_link {
-        struct bplus_link *prev, *next;
+struct list_head {
+        struct list_head *prev, *next;
 };
 
-static inline void list_init(struct bplus_link *link)
+static inline void list_init(struct list_head *link)
 {
         link->prev = link;
         link->next = link;
 }
 
 static inline void
-__list_add(struct bplus_link *link, struct bplus_link *prev, struct bplus_link *next)
+__list_add(struct list_head *link, struct list_head *prev, struct list_head *next)
 {
         link->next = next;
         link->prev = prev;
@@ -29,34 +29,34 @@ __list_add(struct bplus_link *link, struct bplus_link *prev, struct bplus_link *
         prev->next = link;
 }
 
-static inline void __list_del(struct bplus_link *prev, struct bplus_link *next)
+static inline void __list_del(struct list_head *prev, struct list_head *next)
 {
         prev->next = next;
         next->prev = prev;
 }
 
-static inline void list_add(struct bplus_link *link, struct bplus_link *prev)
+static inline void list_add(struct list_head *link, struct list_head *prev)
 {
         __list_add(link, prev, prev->next);
 }
 
-static inline void list_add_tail(struct bplus_link *link, struct bplus_link *head)
+static inline void list_add_tail(struct list_head *link, struct list_head *head)
 {
 	__list_add(link, head->prev, head);
 }
 
-static inline void list_del(struct bplus_link *link)
+static inline void list_del(struct list_head *link)
 {
         __list_del(link->prev, link->next);
         list_init(link);
 }
 
-static inline int list_is_first(struct bplus_link *link, struct bplus_link *head)
+static inline int list_is_first(struct list_head *link, struct list_head *head)
 {
 	return link->prev == head;
 }
 
-static inline int list_is_last(struct bplus_link *link, struct bplus_link *head)
+static inline int list_is_last(struct list_head *link, struct list_head *head)
 {
 	return link->next == head;
 }
@@ -70,17 +70,11 @@ static inline int list_is_last(struct bplus_link *link, struct bplus_link *head)
 #define list_prev_entry(pos, member) \
 	list_entry((pos)->member.prev, typeof(*(pos)), member)
 
-#define bplus_foreach(pos, end) \
-        for (; pos != end; pos = pos->next)
-
-#define bplus_foreach_safe(pos, n, end) \
-        for (n = pos->next; pos != end; pos = n, n = pos->next)
-
 struct bplus_node {
         int type;
         int parent_key_idx;
         struct bplus_non_leaf *parent;
-        struct bplus_link link;
+        struct list_head link;
         int count;
 };
 
@@ -88,7 +82,7 @@ struct bplus_non_leaf {
         int type;
         int parent_key_idx;
         struct bplus_non_leaf *parent;
-        struct bplus_link link;
+        struct list_head link;
         int children;
         int key[BPLUS_MAX_ORDER - 1];
         struct bplus_node *sub_ptr[BPLUS_MAX_ORDER];
@@ -98,7 +92,7 @@ struct bplus_leaf {
         int type;
         int parent_key_idx;
         struct bplus_non_leaf *parent;
-        struct bplus_link link;
+        struct list_head link;
         int entries;
         int key[BPLUS_MAX_ENTRIES];
         int data[BPLUS_MAX_ENTRIES];
@@ -109,7 +103,7 @@ struct bplus_tree {
         int entries;
         int level;
         struct bplus_node *root;
-        struct bplus_link list[BPLUS_MAX_LEVEL];
+        struct list_head list[BPLUS_MAX_LEVEL];
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);

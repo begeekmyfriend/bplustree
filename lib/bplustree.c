@@ -639,6 +639,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 node->sub_ptr[0]->parent = NULL;
                                 tree->root = node->sub_ptr[0];
                                 non_leaf_delete(node);
+                                tree->level--;
                                 return;
                         }
                 }
@@ -783,7 +784,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                         return 0;
                 } else {
                         if (leaf->entries == 1) {
-                                /* delete the onbly last node */
+                                /* delete the only last node */
                                 assert(key == leaf->key[0]);
                                 tree->root = NULL;
                                 leaf_delete(leaf);
