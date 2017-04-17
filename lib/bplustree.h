@@ -81,6 +81,7 @@ struct bplus_node {
         int parent_key_idx;
         struct bplus_non_leaf *parent;
         struct bplus_link link;
+        int count;
 };
 
 struct bplus_non_leaf {

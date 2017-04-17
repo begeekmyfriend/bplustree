@@ -19,13 +19,6 @@ enum {
         RIGHT_SIBLING = 1,
 };
 
-enum {
-        MERGE_FROM_RIGHT,
-        MERGE_INTO_RIGHT = 1,
-};
-
-static int merge_direction = MERGE_FROM_RIGHT;
-
 static inline int
 is_leaf(struct bplus_node *node)
 {
@@ -91,15 +84,16 @@ leaf_delete(struct bplus_leaf *node)
 static int
 bplus_tree_search(struct bplus_tree *tree, int key)
 {
-        int i;
+        int i, ret;
         struct bplus_node *node = tree->root;
-        struct bplus_non_leaf *nln;
-        struct bplus_leaf *ln;
-
         while (node != NULL) {
-                switch (node->type) {
-                case BPLUS_TREE_NON_LEAF:
-                        nln = (struct bplus_non_leaf *)node;
+                if (is_leaf(node)) {
+                        struct bplus_leaf *ln = (struct bplus_leaf *)node;
+                        i = key_binary_search(ln->key, ln->entries, key);
+                        ret = i >= 0 ? ln->data[i] : 0;
+                        break;
+                } else {
+                        struct bplus_non_leaf *nln = (struct bplus_non_leaf *)node;
                         i = key_binary_search(nln->key, nln->children - 1, key);
                         if (i >= 0) {
                                 node = nln->sub_ptr[i + 1];
@@ -107,21 +101,9 @@ bplus_tree_search(struct bplus_tree *tree, int key)
                                 i = -i - 1;
                                 node = nln->sub_ptr[i];
                         }
-                        break;
-                case BPLUS_TREE_LEAF:
-                        ln = (struct bplus_leaf *)node;
-                        i = key_binary_search(ln->key, ln->entries, key);
-                        if (i >= 0) {
-                                return ln->data[i];
-                        } else {
-                                return 0;
-                        }
-                default:
-                        assert(0);
                 }
         }
-
-        return 0;
+        return ret;
 }
 
 static int non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
@@ -175,35 +157,66 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                 split = (tree->order + 1) / 2;
                 /* splited sibling node */
                 sibling = non_leaf_new();
-                list_add(&sibling->link, &node->link);
-                /* node's children always equals to split + 1 after insertion */
-                node->children = split + 1;
                 /* sibling node replication due to location of insertion */
                 if (insert < split) {
-                        split_key = node->key[split - 1];
-                        /* sibling node's first sub-node */
-                        sibling->sub_ptr[0] = node->sub_ptr[split];
-                        sibling->sub_ptr[0]->parent = sibling;
-                        sibling->sub_ptr[0]->parent_key_idx = -1;
-                        /* insertion point is before split point, replicate from key[split] */
-                        for (i = split, j = 0; i < tree->order - 1; i++, j++) {
-                                sibling->key[j] = node->key[i];
-                                sibling->sub_ptr[j + 1] = node->sub_ptr[i + 1];
-                                sibling->sub_ptr[j + 1]->parent = sibling;
-                                sibling->sub_ptr[j + 1]->parent_key_idx = j;
+                        /* split as left sibling */
+                        __list_add(&sibling->link, node->link.prev, &node->link);
+                        /* replicate from sub[0] to sub[split - 1] */
+                        for (i = 0, j = 0; i < split; i++, j++) {
+                                if (j == insert) {
+                                        sibling->sub_ptr[j] = l_ch;
+                                        sibling->sub_ptr[j]->parent = sibling;
+                                        sibling->sub_ptr[j]->parent_key_idx = j - 1;
+                                        sibling->sub_ptr[j + 1] = r_ch;
+                                        sibling->sub_ptr[j + 1]->parent = sibling;
+                                        sibling->sub_ptr[j + 1]->parent_key_idx = j;
+                                        j++;
+                                } else {
+                                        sibling->sub_ptr[j] = node->sub_ptr[i];
+                                        sibling->sub_ptr[j]->parent = sibling;
+                                        sibling->sub_ptr[j]->parent_key_idx = j - 1;
+                                }
                         }
-                        sibling->children = j + 1;
-                        /* insert new key and sub-node */
-                        for (i = node->children - 2; i > insert; i--) {
-                                node->key[i] = node->key[i - 1];
-                                node->sub_ptr[i + 1] = node->sub_ptr[i];
-                                node->sub_ptr[i + 1]->parent_key_idx = i;
+                        sibling->children = split;
+                        /* replicate from key[0] to key[split - 2] */
+                        for (i = 0, j = 0; i < split - 1; j++) {
+                                if (j == insert) {
+                                        sibling->key[j] = key;
+                                } else {
+                                        sibling->key[j] = node->key[i];
+                                        i++;
+                                }
                         }
-                        node->key[i] = key;
-                        node->sub_ptr[i + 1] = r_ch;
-                        node->sub_ptr[i + 1]->parent = node;
-                        node->sub_ptr[i + 1]->parent_key_idx = i;
+                        if (insert == split - 1) {
+                                sibling->key[insert] = key;
+                                sibling->sub_ptr[insert] = l_ch;
+                                sibling->sub_ptr[insert]->parent = sibling;
+                                sibling->sub_ptr[insert]->parent_key_idx = j - 1;
+                                node->sub_ptr[0] = r_ch;
+                                split_key = key;
+                        } else {
+                                node->sub_ptr[0] = node->sub_ptr[split - 1];
+                                split_key = node->key[split - 2];
+                        }
+                        node->sub_ptr[0]->parent = node;
+                        node->sub_ptr[0]->parent_key_idx = - 1;
+                        /* left shift for right node from split - 1 to children - 1 */
+                        for (i = split - 1, j = 0; i < node->children - 1; i++, j++) {
+                                node->key[j] = node->key[i];
+                                node->sub_ptr[j + 1] = node->sub_ptr[i + 1];
+                                node->sub_ptr[j + 1]->parent = node;
+                                node->sub_ptr[j + 1]->parent_key_idx = j;
+                        }
+                        node->sub_ptr[j] = node->sub_ptr[i];
+                        node->children = j + 1;
                 } else if (insert == split) {
+                        /* left node's children always split + 1 */
+                        node->children = split + 1;
+                        node->sub_ptr[split] = l_ch;
+                        node->sub_ptr[split]->parent = node;
+                        node->sub_ptr[split]->parent_key_idx = split - 1;
+                        /* split as right sibling */
+                        list_add(&sibling->link, &node->link);
                         split_key = key;
                         /* sibling node's first sub-node */
                         sibling->sub_ptr[0] = r_ch;
@@ -218,6 +231,10 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                         }
                         sibling->children = j + 1;
                 } else {
+                        /* left node's children always split + 1 */
+                        node->children = split + 1;
+                        /* split as right sibling */
+                        list_add(&sibling->link, &node->link);
                         split_key = node->key[split];
                         /* sibling node's first sub-node */
                         sibling->sub_ptr[0] = node->sub_ptr[split + 1];
@@ -243,6 +260,9 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                         /* insert new key and sub-node*/
                         j = insert - split - 1;
                         sibling->key[j] = key;
+                        sibling->sub_ptr[j] = l_ch;
+                        sibling->sub_ptr[j]->parent = sibling;
+                        sibling->sub_ptr[j]->parent_key_idx = j - 1;
                         sibling->sub_ptr[j + 1] = r_ch;
                         sibling->sub_ptr[j + 1]->parent = sibling;
                         sibling->sub_ptr[j + 1]->parent_key_idx = j;
@@ -255,14 +275,21 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                         node->sub_ptr[i + 1]->parent_key_idx = i;
                 }
                 node->key[i] = key;
+                node->sub_ptr[i] = l_ch;
+                node->sub_ptr[i]->parent_key_idx = i - 1;
                 node->sub_ptr[i + 1] = r_ch;
                 node->sub_ptr[i + 1]->parent_key_idx = i;
                 node->children++;
         }
 
         if (split) {
-                return parent_node_build(tree, (struct bplus_node *)node,
-                        (struct bplus_node *)sibling, split_key, level);
+                if (insert < split) {
+                        return parent_node_build(tree, (struct bplus_node *)sibling,
+                                (struct bplus_node *)node, split_key, level);
+                } else {
+                        return parent_node_build(tree, (struct bplus_node *)node,
+                                (struct bplus_node *)sibling, split_key, level);
+                }
         }
 
         return 0;
@@ -287,27 +314,38 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                 split = (tree->entries + 1) / 2;
                 /* splited sibling node */
                 sibling = leaf_new();
-                list_add(&sibling->link, &leaf->link);
-                /* leaf node's entries always equals to split after insertion */
-                leaf->entries = split;
                 /* sibling leaf replication due to location of insertion */
                 if (insert < split) {
-                        /* insertion point is before split point, replicate from key[split - 1] */
-                        for (i = split - 1, j = 0; i < tree->entries; i++, j++) {
-                                sibling->key[j] = leaf->key[i];
-                                sibling->data[j] = leaf->data[i];
+                        /* split as left sibling */
+                        __list_add(&sibling->link, leaf->link.prev, &leaf->link);
+                        /* replicate from 0 to key[split - 2] */
+                        for (i = 0, j = 0; i < split - 1; j++) {
+                                if (j == insert) {
+                                        sibling->key[j] = key;
+                                        sibling->data[j] = data;
+                                } else {
+                                        sibling->key[j] = leaf->key[i];
+                                        sibling->data[j] = leaf->data[i];
+                                        i++;
+                                }
+                        }
+                        if (j == insert) {
+                                sibling->key[j] = key;
+                                sibling->data[j] = data;
+                                j++;
                         }
                         sibling->entries = j;
-                        /* insert new key and sub-node */
-                        for (i = split - 1; i > insert; i--) {
-                                leaf->key[i] = leaf->key[i - 1];
-                                leaf->data[i] = leaf->data[i - 1];
+                        /* left shift for right node */
+                        for (j = 0; i < leaf->entries; i++, j++) {
+                                leaf->key[j] = leaf->key[i];
+                                leaf->data[j] = leaf->data[i];
                         }
-                        leaf->key[i] = key;
-                        leaf->data[i] = data;
+                        leaf->entries = j;
                 } else {
-                        /* insertion point is or after split point, replicate from key[split] */
-                        for (i = split, j = 0; i < tree->entries; j++) {
+                        /* split as right sibling */
+                        list_add(&sibling->link, &leaf->link);
+                        /* replicate from key[split] */
+                        for (i = split, j = 0; i < leaf->entries; j++) {
                                 if (j != insert - split) {
                                         sibling->key[j] = leaf->key[i];
                                         sibling->data[j] = leaf->data[i];
@@ -325,6 +363,8 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         j = insert - split;
                         sibling->key[j] = key;
                         sibling->data[j] = data;
+                        /* left leaf number */
+                        leaf->entries = split;
                 }
         } else {
                 /* simple insertion */
@@ -338,8 +378,13 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
         }
 
         if (split) {
-                return parent_node_build(tree, (struct bplus_node *)leaf,
-                        (struct bplus_node *)sibling, sibling->key[0], 0);
+                if (insert < split) {
+                        return parent_node_build(tree, (struct bplus_node *)sibling,
+                                (struct bplus_node *)leaf, leaf->key[0], 0);
+                } else {
+                        return parent_node_build(tree, (struct bplus_node *)leaf,
+                                (struct bplus_node *)sibling, sibling->key[0], 0);
+                }
         }
 
         return 0;
@@ -348,33 +393,25 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
 static int
 bplus_tree_insert(struct bplus_tree *tree, int key, int data)
 {
-        int i;
         struct bplus_node *node = tree->root;
-        struct bplus_non_leaf *nln;
-        struct bplus_leaf *ln, *root;
-
         while (node != NULL) {
-                switch (node->type) {
-                case BPLUS_TREE_NON_LEAF:
-                        nln = (struct bplus_non_leaf *)node;
-                        i = key_binary_search(nln->key, nln->children - 1, key);
+                if (is_leaf(node)) {
+                        struct bplus_leaf *ln = (struct bplus_leaf *)node;
+                        return leaf_insert(tree, ln, key, data);
+                } else {
+                        struct bplus_non_leaf *nln = (struct bplus_non_leaf *)node;
+                        int i = key_binary_search(nln->key, nln->children - 1, key);
                         if (i >= 0) {
                                 node = nln->sub_ptr[i + 1];
                         } else {
                                 i = -i - 1;
                                 node = nln->sub_ptr[i];
                         }
-                        break;
-                case BPLUS_TREE_LEAF:
-                        ln = (struct bplus_leaf *)node;
-                        return leaf_insert(tree, ln, key, data);
-                default:
-                        assert(0);
                 }
         }
 
         /* new root */
-        root = leaf_new();
+        struct bplus_leaf *root = leaf_new();
         root->key[0] = key;
         root->data[0] = data;
         root->entries = 1;
@@ -706,31 +743,22 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
 static int
 bplus_tree_delete(struct bplus_tree *tree, int key)
 {
-        int i;
         struct bplus_node *node = tree->root;
-        struct bplus_non_leaf *nln;
-        struct bplus_leaf *ln;
-
         while (node != NULL) {
-                switch (node->type) {
-                case BPLUS_TREE_NON_LEAF:
-                        nln = (struct bplus_non_leaf *)node;
-                        i = key_binary_search(nln->key, nln->children - 1, key);
+                if (is_leaf(node)) {
+                        struct bplus_leaf *ln = (struct bplus_leaf *)node;
+                        return leaf_remove(tree, ln, key);
+                } else {
+                        struct bplus_non_leaf *nln = (struct bplus_non_leaf *)node;
+                        int i = key_binary_search(nln->key, nln->children - 1, key);
                         if (i >= 0) {
                                 node = nln->sub_ptr[i + 1];
                         } else {
                                 i = -i - 1;
                                 node = nln->sub_ptr[i];
                         }
-                        break;
-                case BPLUS_TREE_LEAF:
-                        ln = (struct bplus_leaf *)node;
-                        return leaf_remove(tree, ln, key);
-                default:
-                        assert(0);
                 }
         }
-
         return -1;
 }
 
@@ -789,23 +817,10 @@ bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
     int min = key1 <= key2 ? key1 : key2;
     int max = min == key1 ? key2 : key1;
     struct bplus_node *node = tree->root;
-    struct bplus_non_leaf *nln;
-    struct bplus_leaf *ln;
 
     while (node != NULL) {
-            switch (node->type) {
-            case BPLUS_TREE_NON_LEAF:
-                    nln = (struct bplus_non_leaf *)node;
-                    i = key_binary_search(nln->key, nln->children - 1, min);
-                    if (i >= 0) {
-                            node = nln->sub_ptr[i + 1];
-                    } else  {
-                            i = -i - 1;
-                            node = nln->sub_ptr[i];
-                    }
-                    break;
-            case BPLUS_TREE_LEAF:
-                    ln = (struct bplus_leaf *)node;
+            if (is_leaf(node)) {
+                    struct bplus_leaf *ln = (struct bplus_leaf *)node;
                     i = key_binary_search(ln->key, ln->entries, min);
                     if (i < 0) {
                             i = -i - 1;
@@ -820,13 +835,20 @@ bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
                                     i = 0;
                             }
                     }
-                    return data;
-            default:
-                    assert(0);
+                    break;
+            } else {
+                    struct bplus_non_leaf *nln = (struct bplus_non_leaf *)node;
+                    i = key_binary_search(nln->key, nln->children - 1, min);
+                    if (i >= 0) {
+                            node = nln->sub_ptr[i + 1];
+                    } else  {
+                            i = -i - 1;
+                            node = nln->sub_ptr[i];
+                    }
             }
     }
 
-    return 0;
+    return data;
 }
 
 #ifdef _BPLUS_TREE_DEBUG
@@ -855,6 +877,31 @@ static inline int
 children(struct bplus_node *node)
 {
         return ((struct bplus_non_leaf *) node)->children;
+}
+
+static void
+node_key_dump(struct bplus_node *node)
+{
+        int i;
+        if (is_leaf(node)) {
+                for (i = 0; i < node->count; i++) {
+                        printf("%d ", ((struct bplus_leaf *)node)->key[i]);
+                }
+        } else {
+                for (i = 0; i < node->count - 1; i++) {
+                        printf("%d ", ((struct bplus_non_leaf *)node)->key[i]);
+                }
+        }
+        printf("\n");
+}
+
+static int
+node_key(struct bplus_node *node, int i) {
+        if (is_leaf(node)) {
+                return ((struct bplus_leaf *)node)->key[i];
+        } else {
+                return ((struct bplus_non_leaf *)node)->key[i];
+        }
 }
 
 static void
