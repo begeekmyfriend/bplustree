@@ -295,9 +295,7 @@ static int
 non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                 struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level)
 {
-        int split = 0, split_key;
-        struct bplus_non_leaf *sibling;
-
+        /* search key location */
         int insert = key_binary_search(node->key, node->children - 1, key);
         assert(insert < 0);
         insert = -insert - 1;
@@ -305,8 +303,9 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
         /* node is full */
         if (node->children == tree->order) {
                 /* split = [m/2] */
-                split = (node->children + 1) / 2;
-                sibling = non_leaf_new();
+                int split_key;
+                int split = (node->children + 1) / 2;
+                struct bplus_non_leaf *sibling = non_leaf_new();
                 if (insert < split) {
                         split_key = non_leaf_split_left(node, sibling, l_ch, r_ch, key, insert);
                 } else if (insert == split) {
@@ -314,11 +313,7 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                 } else {
                         split_key = non_leaf_split_right2(node, sibling, l_ch, r_ch, key, insert);
                 }
-        } else {
-                non_leaf_simple_insert(node, l_ch, r_ch, key, insert);
-        }
-
-        if (split) {
+                /* build new parent */
                 if (insert < split) {
                         return parent_node_build(tree, (struct bplus_node *)sibling,
                                 (struct bplus_node *)node, split_key, level);
@@ -326,6 +321,8 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                         return parent_node_build(tree, (struct bplus_node *)node,
                                 (struct bplus_node *)sibling, split_key, level);
                 }
+        } else {
+                non_leaf_simple_insert(node, l_ch, r_ch, key, insert);
         }
 
         return 0;
@@ -413,9 +410,7 @@ leaf_split_right(struct bplus_leaf *leaf, struct bplus_leaf *right,
 static int
 leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
 {
-        int split = 0;
-        struct bplus_leaf *sibling;
-
+        /* search key location */
         int insert = key_binary_search(leaf->key, leaf->entries, key);
         if (insert >= 0) {
                 /* Already exists */
@@ -426,20 +421,16 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
         /* node full */
         if (leaf->entries == tree->entries) {
                 /* split = [m/2] */
-                split = (tree->entries + 1) / 2;
+                int split = (tree->entries + 1) / 2;
                 /* splited sibling node */
-                sibling = leaf_new();
+                struct bplus_leaf *sibling = leaf_new();
                 /* sibling leaf replication due to location of insertion */
                 if (insert < split) {
                         leaf_split_left(leaf, sibling, key, data, insert);
                 } else {
                         leaf_split_right(leaf, sibling, key, data, insert);
                 }
-        } else {
-                leaf_simple_insert(leaf, key, data, insert);
-        }
-
-        if (split) {
+                /* build new parent */
                 if (insert < split) {
                         return parent_node_build(tree, (struct bplus_node *)sibling,
                                 (struct bplus_node *)leaf, leaf->key[0], 0);
@@ -447,6 +438,8 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
                         return parent_node_build(tree, (struct bplus_node *)leaf,
                                 (struct bplus_node *)sibling, sibling->key[0], 0);
                 }
+        } else {
+                leaf_simple_insert(leaf, key, data, insert);
         }
 
         return 0;
@@ -480,6 +473,18 @@ bplus_tree_insert(struct bplus_tree *tree, int key, int data)
         tree->root = (struct bplus_node *)root;
         list_add(&root->link, &tree->list[tree->level]);
         return 0;
+}
+
+static void
+non_leaf_simple_remove(struct bplus_non_leaf *node, int remove)
+{
+        assert(node->children > 2);
+        for (; remove < node->children - 2; remove++) {
+                node->key[remove] = node->key[remove + 1];
+                node->sub_ptr[remove + 1] = node->sub_ptr[remove + 2];
+                node->sub_ptr[remove + 1]->parent_key_idx = remove;
+        }
+        node->children--;
 }
 
 static void
@@ -613,14 +618,8 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                         non_leaf_remove(tree, parent, i);
                                 }
                         } else {
-                                /* remove key first in case of overflow during merging with sibling node */
-                                for (; remove < node->children - 2; remove++) {
-                                        node->key[remove] = node->key[remove + 1];
-                                        node->sub_ptr[remove + 1] = node->sub_ptr[remove + 2];
-                                        node->sub_ptr[remove + 1]->parent_key_idx = remove;
-                                }
-                                node->children--;
-
+                                /* remove first in case of overflow during merging with sibling */
+                                non_leaf_simple_remove(node, remove);
                                 /* shift or merge */
                                 if (sibling->children > (tree->order + 1) / 2) {
                                         non_leaf_shift_from_right(node, sibling, i + 1);
@@ -630,8 +629,6 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                         non_leaf_remove(tree, parent, i + 1);
                                 }
                         }
-                        /* deletion finishes */
-                        return;
                 } else {
                         if (node->children == 2) {
                                 /* delete old root node */
@@ -640,19 +637,23 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
                                 tree->root = node->sub_ptr[0];
                                 non_leaf_delete(node);
                                 tree->level--;
-                                return;
+                        } else {
+                                non_leaf_simple_remove(node, remove);
                         }
                 }
+        } else {
+                non_leaf_simple_remove(node, remove);
         }
-        
-        /* simple deletion */
-        assert(node->children > 2);
-        for (; remove < node->children - 2; remove++) {
-                node->key[remove] = node->key[remove + 1];
-                node->sub_ptr[remove + 1] = node->sub_ptr[remove + 2];
-                node->sub_ptr[remove + 1]->parent_key_idx = remove;
+}
+
+static void
+leaf_simple_remove(struct bplus_leaf *leaf, int remove)
+{
+        for (; remove < leaf->entries - 1; remove++) {
+                leaf->key[remove] = leaf->key[remove + 1];
+                leaf->data[remove] = leaf->data[remove + 1];
         }
-        node->children--;
+        leaf->entries--;
 }
 
 static void
@@ -764,13 +765,8 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         non_leaf_remove(tree, parent, i);
                                 }
                         } else {
-                                /* remove element first in case of overflow during merging with sibling node */
-                                for (; remove < leaf->entries - 1; remove++) {
-                                        leaf->key[remove] = leaf->key[remove + 1];
-                                        leaf->data[remove] = leaf->data[remove + 1];
-                                }
-                                leaf->entries--;
-
+                                /* remove first in case of overflow during merging with sibling */
+                                leaf_simple_remove(leaf, remove);
                                 /* shift or merge */
                                 if (sibling->entries > (tree->entries + 1) / 2) {
                                         leaf_shift_from_right(leaf, sibling, i + 1);
@@ -780,8 +776,6 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                         non_leaf_remove(tree, parent, i + 1);
                                 }
                         }
-                        /* deletion finishes */
-                        return 0;
                 } else {
                         if (leaf->entries == 1) {
                                 /* delete the only last node */
@@ -789,16 +783,14 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
                                 tree->root = NULL;
                                 leaf_delete(leaf);
                                 return 0;
+                        } else {
+                                leaf_simple_remove(leaf, remove);
                         }
                 }
+        } else {
+                leaf_simple_remove(leaf, remove);
         }
 
-        /* simple deletion */
-        for (; remove < leaf->entries - 1; remove++) {
-                leaf->key[remove] = leaf->key[remove + 1];
-                leaf->data[remove] = leaf->data[remove + 1];
-        }
-        leaf->entries--;
         return 0;
 }
 
