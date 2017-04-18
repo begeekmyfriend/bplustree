@@ -84,7 +84,7 @@ leaf_delete(struct bplus_leaf *node)
 static int
 bplus_tree_search(struct bplus_tree *tree, int key)
 {
-        int i, ret;
+        int i, ret = -1;
         struct bplus_node *node = tree->root;
         while (node != NULL) {
                 if (is_leaf(node)) {
