@@ -16,18 +16,23 @@ static void stdin_flush(void)
         }
 }
 
-static struct bplus_tree_config * bplus_tree_setting(struct bplus_tree_config *config)
+static int bplus_tree_setting(struct bplus_tree_config *config)
 {
-        int i, ret, again;
+        int i, ret = 0, again = 1;
 
         fprintf(stderr, "\n-- B+tree setting...\n");
-
-        do {
-                fprintf(stderr, "Set b+tree non-leaf order (%d < order <= %d e.g. 7): ", BPLUS_MIN_ORDER, BPLUS_MAX_ORDER);
-                if ((i = getchar()) == '\n') {
+        fprintf(stderr, "Set b+tree non-leaf order (%d < order <= %d e.g. 7): ", BPLUS_MIN_ORDER, BPLUS_MAX_ORDER);
+        while (again) {
+                switch (i = getchar()) {
+                case EOF:
+                        fprintf(stderr, "\n");
+                case 'q':
+                        return -1;
+                case '\n':
                         config->order = 7;
                         again = 0;
-                } else {
+                        break;
+                default:
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &config->order);
                         if (!ret || getchar() != '\n') {
@@ -38,15 +43,23 @@ static struct bplus_tree_config * bplus_tree_setting(struct bplus_tree_config *c
                         } else {
                                 again = 0;
                         }
+                        break;
                 }
-        } while (again);
+        }
 
-        do {
-                fprintf(stderr, "Set b+tree leaf entries (<= %d e.g. 10): ", BPLUS_MAX_ENTRIES);
-                if ((i = getchar()) == '\n') {
+        again = 1;
+        fprintf(stderr, "Set b+tree leaf entries (<= %d e.g. 10): ", BPLUS_MAX_ENTRIES);
+        while (again) {
+                switch (i = getchar()) {
+                case EOF:
+                        fprintf(stderr, "\n");
+                case 'q':
+                        return -1;
+                case '\n':
                         config->entries = 10;
                         again = 0;
-                } else {
+                        break;
+                default:
                         ungetc(i, stdin);
                         ret = fscanf(stdin, "%d", &config->entries);
                         if (!ret || getchar() != '\n') {
@@ -57,10 +70,11 @@ static struct bplus_tree_config * bplus_tree_setting(struct bplus_tree_config *c
                         } else {
                                 again = 0;
                         }
+                        break;
                 }
-        } while (again);
+        }
 
-        return config;
+        return ret;
 }
 
 static void _proc(struct bplus_tree *tree, char op, int n)
@@ -72,7 +86,7 @@ static void _proc(struct bplus_tree *tree, char op, int n)
                 case 'r':
                         bplus_tree_put(tree, n, 0);
                         break;
-                case 'f':
+                case 's':
                         fprintf(stderr, "key:%d data:%d\n", n, bplus_tree_get(tree, n));
                         break;
                 default:
@@ -144,10 +158,10 @@ static int number_process(struct bplus_tree *tree, char op)
 
 static void command_tips(void)
 {
-        fprintf(stderr, "i: Insert key number. E.g. i 1 4-7 9\n");
-        fprintf(stderr, "r: Remove key number. E.g. r 1-100\n");
-        fprintf(stderr, "f: Find the key number. E.g. f 41-60\n");
-        fprintf(stderr, "d: Dump the tree content.\n");
+        fprintf(stderr, "i: Insert key. e.g. i 1 4-7 9\n");
+        fprintf(stderr, "r: Remove key. e.g. r 1-100\n");
+        fprintf(stderr, "s: Search by key. e.g. s 41-60\n");
+        fprintf(stderr, "d: Dump the tree structure.\n");
         fprintf(stderr, "q: quit.\n");
 }
 
@@ -169,7 +183,7 @@ static void command_process(struct bplus_tree *tree)
                         break;
                 case 'i':
                 case 'r':
-                case 'f':
+                case 's':
                         if (number_process(tree, c) < 0) {
                                 return;
                         }
@@ -187,7 +201,9 @@ int main(void)
         struct bplus_tree_config config;
 
         /* B+tree default setting */
-        bplus_tree_setting(&config);
+        if (bplus_tree_setting(&config) < 0) {
+                return 0;
+        }
 
         /* Init b+tree */
         tree = bplus_tree_init(config.order, config.entries);
