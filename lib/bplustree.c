@@ -478,6 +478,7 @@ bplus_tree_insert(struct bplus_tree *tree, int key, int data)
 static void
 non_leaf_simple_remove(struct bplus_non_leaf *node, int remove)
 {
+        assert(node->children >= 2);
         for (; remove < node->children - 2; remove++) {
                 node->key[remove] = node->key[remove + 1];
                 node->sub_ptr[remove + 1] = node->sub_ptr[remove + 2];
