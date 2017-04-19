@@ -1135,10 +1135,10 @@ bplus_tree_deinit(struct bplus_tree *tree)
 
 typedef struct node_backlog {
         /* Node backlogged */
-        struct bplus_node *node;
+        off_t offset;
         /* The index next to the backtrack point, must be >= 1 */
         int next_sub_idx;
-} node_backlog ;
+} node_backlog;
 
 static inline void
 nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
@@ -1186,7 +1186,7 @@ draw(struct bplus_tree *tree, struct bplus_node *node, struct node_backlog *stac
                 if (i == level - 1) {
                         printf("%-8s", "+-------");
                 } else {
-                        if (stack[i - 1].node != NULL) {
+                        if (stack[i - 1].offset != INVALID_OFFSET) {
                                 printf("%-8s", "|");
                         } else {
                                 printf("%-8s", " ");
@@ -1200,7 +1200,7 @@ void
 bplus_tree_dump(struct bplus_tree *tree)
 {
         int level = 0;
-        struct bplus_node *node = node_fetch(tree, tree->root);
+        struct bplus_node *node = node_seek(tree, tree->root);
         struct node_backlog nbl, *p_nbl = NULL;
         struct node_backlog *top, *buttom, nbl_stack[MAX_LEVEL];
 
@@ -1216,10 +1216,10 @@ bplus_tree_dump(struct bplus_tree *tree)
 
                         /* Backlog the node */
                         if (is_leaf(node) || sub_idx + 1 >= children(node)) {
-                                nbl.node = NULL;
+                                nbl.offset = INVALID_OFFSET;
                                 nbl.next_sub_idx = 0;
                         } else {
-                                nbl.node = node;
+                                nbl.offset = node->self;
                                 nbl.next_sub_idx = sub_idx + 1;
                         }
                         nbl_push(&nbl, &top, &buttom);
@@ -1228,18 +1228,17 @@ bplus_tree_dump(struct bplus_tree *tree)
                         /* Draw lines as long as sub_idx is the first one */
                         if (sub_idx == 0) {
                                 draw(tree, node, nbl_stack, level);
-                                node_flush(tree, node);
                         }
 
                         /* Move deep down */
-                        node = is_leaf(node) ? NULL : node_fetch(tree, sub(node)[sub_idx]);
+                        node = is_leaf(node) ? NULL : node_seek(tree, sub(node)[sub_idx]);
                 } else {
                         p_nbl = nbl_pop(&top, &buttom);
                         if (p_nbl == NULL) {
                                 /* End of traversal */
                                 break;
                         }
-                        node = p_nbl->node;
+                        node = node_seek(tree, p_nbl->offset);
                         level--;
                 }
         }
