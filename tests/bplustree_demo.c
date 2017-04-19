@@ -30,7 +30,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        strcpy(config->filename, "/tmp/test.bp");
+                        strcpy(config->filename, "/tmp/data.bp");
                         again = 0;
                         break;
                 default:
