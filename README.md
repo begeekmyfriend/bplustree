@@ -25,6 +25,3 @@ Code Coverage Test
 ```shell
 ./coverage_build.sh
 ```
-
-There is almost NO code of inspiration, but 99% f\*\*\*cking perspiration!!
-===========================================================================
