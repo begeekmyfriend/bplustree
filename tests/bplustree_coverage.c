@@ -147,7 +147,7 @@ void exec_file(char *file, struct bplus_tree *tree)
 
 int main(void)
 {
-        struct bplus_tree *tree = bplus_tree_init("test.bp", 512);
+        struct bplus_tree *tree = bplus_tree_init("/tmp/data.bp", 512);
 
         exec_file("testcase", tree);
 

@@ -124,7 +124,7 @@ struct bplus_tree {
         int level;
         int block_size;
         off_t root;
-        off_t file_offset;
+        off_t file_size;
         struct list_head free_blocks;
         struct list_head free_caches;
 };

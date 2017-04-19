@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -161,8 +162,8 @@ new_node_write(struct bplus_tree *tree, struct bplus_node *node)
 {
         /* assign new offset to the new node */
         if (list_empty(&tree->free_blocks)) {
-                node->self = tree->file_offset;
-                tree->file_offset += tree->block_size;
+                node->self = tree->file_size;
+                tree->file_size += tree->block_size;
         } else {
                 struct free_block *block;
                 block = list_first_entry(&tree->free_blocks, struct free_block, link);
@@ -1084,15 +1085,44 @@ bplus_close(int fd)
         close(fd);
 }
 
+static off_t
+str_to_hex(char *c, int len)
+{
+        off_t offset = 0;
+        while (len-- > 0) {
+                if (isdigit(*c)) {
+                        offset = offset * 16 + *c - '0';
+                } else if (isxdigit(*c)) {
+                        if (islower(*c)) {
+                                offset = offset * 16 + *c - 'a';
+                        } else {
+                                offset = offset * 16 + *c - 'A';
+                        }
+                }
+                c++;
+        }
+        return offset;
+}
+
+static void
+hex_to_str(off_t offset, char *buf, int len)
+{
+        const static char *hex = "0123456789ABCDEF";
+        while (len-- > 0) {
+                buf[len] = hex[offset & 0xf];
+                offset /= 16;
+        }
+}
+
 struct bplus_tree *
 bplus_tree_init(char *filename, int block_size)
 {
         int i;
+        char buf[8];
         struct bplus_node node;
         assert((block_size & (block_size - 1)) == 0);
         struct bplus_tree *tree = calloc(1, sizeof(*tree));
         if (tree != NULL) {
-                tree->root = INVALID_OFFSET;
                 tree->block_size = block_size;
                 max_order = tree->order = (block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
                 max_entries = tree->entries = (block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
@@ -1101,14 +1131,36 @@ bplus_tree_init(char *filename, int block_size)
                         exit(-1);
                 }
                 printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
-                list_init(&tree->free_blocks);
                 list_init(&tree->free_caches);
-                for (i = 0; i < 100000; i++) {
+                for (i = 0; i < 50000; i++) {
                         struct free_cache *cache = calloc(1, sizeof(*cache));
                         assert(cache != NULL);
                         cache->buf = malloc(tree->block_size);
                         assert(cache->buf != NULL);
                         list_add(&cache->link, &tree->free_caches);
+                }
+                list_init(&tree->free_blocks);
+                int fd = open("/tmp/metadata.bp", O_RDWR, 0644);
+                if (fd >= 0) {
+                        /* load root location */
+                        int len = read(fd, buf, sizeof(buf));
+                        assert(len == sizeof(buf));
+                        tree->root = str_to_hex(buf, sizeof(buf));
+                        /* load file size */
+                        len = read(fd, buf, sizeof(buf));
+                        assert(len == sizeof(buf));
+                        tree->file_size = str_to_hex(buf, sizeof(buf));
+                        /* load free blocks */
+                        while ((len = read(fd, buf, sizeof(buf))) == sizeof(buf)) {
+                                struct free_block *block = malloc(sizeof(*block));
+                                assert(block != NULL);
+                                block->offset = str_to_hex(buf, sizeof(buf));
+                                list_add(&block->link, &tree->free_blocks);
+                        }
+                        close(fd);
+                } else {
+                        tree->root = INVALID_OFFSET;
+                        tree->file_size = 0;
                 }
                 tree->fd = bplus_open(filename);
                 assert(tree->fd >= 0);
@@ -1119,12 +1171,30 @@ bplus_tree_init(char *filename, int block_size)
 void
 bplus_tree_deinit(struct bplus_tree *tree)
 {
+        int len;
+        char buf[8];
         struct list_head *pos, *n;
-        /* In fact these free blocks need to be recorded at some place... */
+
+        int fd = open("/tmp/metadata.bp", O_CREAT | O_RDWR, 0644);
+        assert(fd >= 0);
+        /* store root node location */
+        hex_to_str(tree->root, buf, sizeof(buf));
+        len = write(fd, buf, sizeof(buf));
+        assert(len == sizeof(buf));
+        /* store file size */
+        hex_to_str(tree->file_size, buf, sizeof(buf));
+        len = write(fd, buf, sizeof(buf));
+        assert(len == sizeof(buf));
+        /* store free blocks in files for future allocation */
         list_for_each_safe(pos, n, &tree->free_blocks) {
                 list_del(pos);
-                free(list_entry(pos, struct free_block, link));
+                struct free_block *block = list_entry(pos, struct free_block, link);
+                hex_to_str(block->offset, buf, sizeof(buf));
+                len = write(fd, buf, sizeof(buf));
+                assert(len == sizeof(buf));
+                free(block);
         }
+        close(fd);
         bplus_close(tree->fd);
         free(tree);
 }
@@ -1133,12 +1203,12 @@ bplus_tree_deinit(struct bplus_tree *tree)
 
 #define MAX_LEVEL 64
 
-typedef struct node_backlog {
+struct node_backlog {
         /* Node backlogged */
         off_t offset;
         /* The index next to the backtrack point, must be >= 1 */
         int next_sub_idx;
-} node_backlog;
+};
 
 static inline void
 nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
@@ -1160,6 +1230,7 @@ children(struct bplus_node *node)
         assert(!is_leaf(node));
         return node->count;
 }
+
 static void
 node_key_dump(struct bplus_node *node)
 {

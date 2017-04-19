@@ -3,11 +3,6 @@
 
 #include "bplustree.h"
 
-struct bplus_tree_config {
-        int order;
-        int entries;
-}; 
-
 static void bplus_tree_get_put_test(struct bplus_tree *tree)
 {
         int i;
@@ -138,7 +133,7 @@ static void bplus_tree_test(void)
         printf("\n>>> B+tree general test.\n");
 
         /* Init b+tree */
-        struct bplus_tree *tree = bplus_tree_init("test.bp", 128);
+        struct bplus_tree *tree = bplus_tree_init("/tmp/data.bp", 128);
         if (tree == NULL) {
                 printf("Init failure!\n");
                 exit(-1);

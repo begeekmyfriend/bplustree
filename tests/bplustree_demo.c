@@ -22,7 +22,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         int i, size, ret = 0, again = 1;
 
         fprintf(stderr, "\n-- B+tree setting...\n");
-        fprintf(stderr, "Set b+tree file name (e.g. test.bp): ");
+        fprintf(stderr, "Set b+tree file name (e.g. /tmp/data.bp): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
@@ -30,7 +30,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        strcpy(config->filename, "test.bp");
+                        strcpy(config->filename, "/tmp/test.bp");
                         again = 0;
                         break;
                 default:
@@ -47,7 +47,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         }
 
         again = 1;
-        fprintf(stderr, "Set b+tree block size (power of 2, e.g. 128): ");
+        fprintf(stderr, "Set b+tree block size (power of 2, e.g. 512): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
@@ -55,7 +55,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        config->block_size = 128;
+                        config->block_size = 512;
                         again = 0;
                         break;
                 default:
