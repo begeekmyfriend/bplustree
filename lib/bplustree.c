@@ -1114,47 +1114,43 @@ hex_to_str(off_t offset, char *buf, int len)
         }
 }
 
+static inline off_t
+offset_load(int fd)
+{
+        char buf[8];
+        int len = read(fd, buf, sizeof(buf));
+        return len > 0 ? str_to_hex(buf, sizeof(buf)) : INVALID_OFFSET;
+}
+
+static inline int
+offset_store(int fd, off_t offset)
+{
+        char buf[8];
+        hex_to_str(offset, buf, sizeof(buf));
+        return write(fd, buf, sizeof(buf));
+}
+
 struct bplus_tree *
 bplus_tree_init(char *filename, int block_size)
 {
         int i;
-        char buf[8];
         struct bplus_node node;
         assert((block_size & (block_size - 1)) == 0);
         struct bplus_tree *tree = calloc(1, sizeof(*tree));
         if (tree != NULL) {
                 tree->block_size = block_size;
-                max_order = tree->order = (block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
-                max_entries = tree->entries = (block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
-                if (tree->order <= 2) {
-                        fprintf(stderr, "block size is too small for one node!\n");
-                        exit(-1);
-                }
-                printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
-                list_init(&tree->free_caches);
-                for (i = 0; i < 50000; i++) {
-                        struct free_cache *cache = calloc(1, sizeof(*cache));
-                        assert(cache != NULL);
-                        cache->buf = malloc(tree->block_size);
-                        assert(cache->buf != NULL);
-                        list_add(&cache->link, &tree->free_caches);
-                }
+                /* load metadata */
                 list_init(&tree->free_blocks);
                 int fd = open("/tmp/metadata.bp", O_RDWR, 0644);
                 if (fd >= 0) {
-                        /* load root location */
-                        int len = read(fd, buf, sizeof(buf));
-                        assert(len == sizeof(buf));
-                        tree->root = str_to_hex(buf, sizeof(buf));
-                        /* load file size */
-                        len = read(fd, buf, sizeof(buf));
-                        assert(len == sizeof(buf));
-                        tree->file_size = str_to_hex(buf, sizeof(buf));
+                        tree->root = offset_load(fd);
+                        tree->block_size = offset_load(fd);
+                        tree->file_size = offset_load(fd);
                         /* load free blocks */
-                        while ((len = read(fd, buf, sizeof(buf))) == sizeof(buf)) {
+                        while ((i = offset_load(fd)) != INVALID_OFFSET) {
                                 struct free_block *block = malloc(sizeof(*block));
                                 assert(block != NULL);
-                                block->offset = str_to_hex(buf, sizeof(buf));
+                                block->offset = i;
                                 list_add(&block->link, &tree->free_blocks);
                         }
                         close(fd);
@@ -1162,6 +1158,24 @@ bplus_tree_init(char *filename, int block_size)
                         tree->root = INVALID_OFFSET;
                         tree->file_size = 0;
                 }
+                /* set order and entries */
+                max_order = tree->order = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
+                max_entries = tree->entries = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
+                if (tree->order <= 2) {
+                        fprintf(stderr, "block size is too small for one node!\n");
+                        exit(-1);
+                }
+                printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
+                /* init node cache */
+                list_init(&tree->free_caches);
+                for (i = 0; i < 100000; i++) {
+                        struct free_cache *cache = calloc(1, sizeof(*cache));
+                        assert(cache != NULL);
+                        cache->buf = malloc(tree->block_size);
+                        assert(cache->buf != NULL);
+                        list_add(&cache->link, &tree->free_caches);
+                }
+                /* open data file */
                 tree->fd = bplus_open(filename);
                 assert(tree->fd >= 0);
         }
@@ -1171,27 +1185,17 @@ bplus_tree_init(char *filename, int block_size)
 void
 bplus_tree_deinit(struct bplus_tree *tree)
 {
-        int len;
-        char buf[8];
         struct list_head *pos, *n;
-
         int fd = open("/tmp/metadata.bp", O_CREAT | O_RDWR, 0644);
         assert(fd >= 0);
-        /* store root node location */
-        hex_to_str(tree->root, buf, sizeof(buf));
-        len = write(fd, buf, sizeof(buf));
-        assert(len == sizeof(buf));
-        /* store file size */
-        hex_to_str(tree->file_size, buf, sizeof(buf));
-        len = write(fd, buf, sizeof(buf));
-        assert(len == sizeof(buf));
-        /* store free blocks in files for future allocation */
+        assert(offset_store(fd, tree->root) == 8);
+        assert(offset_store(fd, tree->block_size) == 8);
+        assert(offset_store(fd, tree->file_size) == 8);
+        /* store free blocks in files for future reuse */
         list_for_each_safe(pos, n, &tree->free_blocks) {
                 list_del(pos);
                 struct free_block *block = list_entry(pos, struct free_block, link);
-                hex_to_str(block->offset, buf, sizeof(buf));
-                len = write(fd, buf, sizeof(buf));
-                assert(len == sizeof(buf));
+                assert(offset_store(fd, block->offset) == 8);
                 free(block);
         }
         close(fd);

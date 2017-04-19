@@ -47,7 +47,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         }
 
         again = 1;
-        fprintf(stderr, "Set b+tree block size (power of 2, e.g. 512): ");
+        fprintf(stderr, "Set b+tree block size (power of 2, e.g. 128): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
@@ -55,7 +55,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        config->block_size = 512;
+                        config->block_size = 128;
                         again = 0;
                         break;
                 default:
