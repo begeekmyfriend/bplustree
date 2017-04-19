@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "bplustree.h"
 
 struct bplus_tree_config {
-        int order;
-        int entries;
+        char filename[1024];
+        int block_size;
 }; 
 
 static void stdin_flush(void)
@@ -18,10 +19,10 @@ static void stdin_flush(void)
 
 static int bplus_tree_setting(struct bplus_tree_config *config)
 {
-        int i, ret = 0, again = 1;
+        int i, size, ret = 0, again = 1;
 
         fprintf(stderr, "\n-- B+tree setting...\n");
-        fprintf(stderr, "Set b+tree non-leaf order (%d < order <= %d e.g. 7): ", BPLUS_MIN_ORDER, BPLUS_MAX_ORDER);
+        fprintf(stderr, "Set b+tree file name (e.g. test.bp): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
@@ -29,16 +30,14 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        config->order = 7;
+                        strcpy(config->filename, "test.bp");
                         again = 0;
                         break;
                 default:
                         ungetc(i, stdin);
-                        ret = fscanf(stdin, "%d", &config->order);
+                        ret = fscanf(stdin, "%s", config->filename);
                         if (!ret || getchar() != '\n') {
                                 stdin_flush();
-                                again = 1;
-                        } else if (config->order < BPLUS_MIN_ORDER || config->order > BPLUS_MAX_ORDER) {
                                 again = 1;
                         } else {
                                 again = 0;
@@ -48,7 +47,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         }
 
         again = 1;
-        fprintf(stderr, "Set b+tree leaf entries (<= %d e.g. 10): ", BPLUS_MAX_ENTRIES);
+        fprintf(stderr, "Set b+tree block size (power of 2, e.g. 128): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
@@ -56,18 +55,19 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        config->entries = 10;
+                        config->block_size = 128;
                         again = 0;
                         break;
                 default:
                         ungetc(i, stdin);
-                        ret = fscanf(stdin, "%d", &config->entries);
+                        ret = fscanf(stdin, "%d", &size);
                         if (!ret || getchar() != '\n') {
                                 stdin_flush();
                                 again = 1;
-                        } else if (config->entries > BPLUS_MAX_ENTRIES) {
+                        } else if (size <= 0 || (size & (size - 1)) != 0) {
                                 again = 1;
                         } else {
+                                config->block_size = size;
                                 again = 0;
                         }
                         break;
@@ -87,7 +87,7 @@ static void _proc(struct bplus_tree *tree, char op, int n)
                         bplus_tree_put(tree, n, 0);
                         break;
                 case 's':
-                        fprintf(stderr, "key:%d data:%d\n", n, bplus_tree_get(tree, n));
+                        fprintf(stderr, "key:%d data:%ld\n", n, bplus_tree_get(tree, n));
                         break;
                 default:
                         break;
@@ -206,7 +206,7 @@ int main(void)
         }
 
         /* Init b+tree */
-        tree = bplus_tree_init(config.order, config.entries);
+        tree = bplus_tree_init(config.filename, config.block_size);
         if (tree == NULL) {
                 fprintf(stderr, "Init failure!\n");
                 exit(-1);

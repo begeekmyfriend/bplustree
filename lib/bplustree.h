@@ -5,11 +5,6 @@
 #ifndef _BPLUS_TREE_H
 #define _BPLUS_TREE_H
 
-#define BPLUS_MIN_ORDER     3
-#define BPLUS_MAX_ORDER     64
-#define BPLUS_MAX_ENTRIES   64
-#define BPLUS_MAX_LEVEL     10
-
 struct list_head {
         struct list_head *prev, *next;
 };
@@ -51,66 +46,96 @@ static inline void list_del(struct list_head *link)
         list_init(link);
 }
 
-static inline int list_is_first(struct list_head *link, struct list_head *head)
+static inline int list_empty(const struct list_head *head)
 {
-	return link->prev == head;
-}
-
-static inline int list_is_last(struct list_head *link, struct list_head *head)
-{
-	return link->next == head;
+	return head->next == head;
 }
 
 #define list_entry(ptr, type, member) \
         ((type *)((char *)(ptr) - (size_t)(&((type *)0)->member)))
 
-#define list_next_entry(pos, member) \
-	list_entry((pos)->member.next, typeof(*(pos)), member)
+#define list_first_entry(ptr, type, member) \
+	list_entry((ptr)->next, type, member)
 
-#define list_prev_entry(pos, member) \
-	list_entry((pos)->member.prev, typeof(*(pos)), member)
+#define list_last_entry(ptr, type, member) \
+	list_entry((ptr)->prev, type, member)
 
-struct bplus_node {
+#define list_for_each(pos, head) \
+        for (pos = (head)->next; pos != (head); pos = pos->next)
+
+#define list_for_each_safe(pos, n, head) \
+        for (pos = (head)->next, n = pos->next; pos != (head); \
+                pos = n, n = pos->next)
+
+typedef struct free_block {
+        struct list_head link;
+        off_t offset;
+} free_block;
+
+typedef struct free_cache {
+        struct list_head link;
+        char *buf;
+} free_cache;
+
+typedef struct bplus_node {
+        struct free_cache *cache;
+        off_t self;
+        off_t parent;
+        off_t prev;
+        off_t next;
         int type;
         int parent_key_idx;
-        struct bplus_non_leaf *parent;
-        struct list_head link;
         int count;
-};
-
+        int reserve;
+} bplus_node;
+/*
 struct bplus_non_leaf {
+        struct free_cache *borrowed;
+        off_t self;
+        off_t parent;
+        off_t prev;
+        off_t next;
         int type;
         int parent_key_idx;
-        struct bplus_non_leaf *parent;
-        struct list_head link;
         int children;
+        int reserve;
         int key[BPLUS_MAX_ORDER - 1];
-        struct bplus_node *sub_ptr[BPLUS_MAX_ORDER];
+        off_t sub_ptr[BPLUS_MAX_ORDER];
 };
 
 struct bplus_leaf {
+        struct free_cache *borrowed;
+        off_t self;
+        off_t parent;
+        off_t prev;
+        off_t next;
         int type;
         int parent_key_idx;
-        struct bplus_non_leaf *parent;
-        struct list_head link;
         int entries;
+        int reserve;
         int key[BPLUS_MAX_ENTRIES];
-        int data[BPLUS_MAX_ENTRIES];
+        long data[BPLUS_MAX_ENTRIES];
 };
-
+*/
 struct bplus_tree {
+        int fd;
         int order;
         int entries;
         int level;
-        struct bplus_node *root;
-        struct list_head list[BPLUS_MAX_LEVEL];
+        int block_size;
+        off_t root;
+        off_t file_offset;
+        struct list_head free_blocks;
+        struct list_head free_caches;
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);
-int bplus_tree_get(struct bplus_tree *tree, int key);
-int bplus_tree_put(struct bplus_tree *tree, int key, int data);
-int bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2);
-struct bplus_tree *bplus_tree_init(int order, int entries);
+long bplus_tree_get(struct bplus_tree *tree, int key);
+int bplus_tree_put(struct bplus_tree *tree, int key, long data);
+long bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2);
+struct bplus_tree *bplus_tree_init(char *filename, int block_size);
 void bplus_tree_deinit(struct bplus_tree *tree);
+int bplus_open(char *filename);
+void bplus_close(int fd);
 
 #endif  /* _BPLUS_TREE_H */

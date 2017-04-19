@@ -4,11 +4,6 @@
 #include <assert.h>
 #include "bplustree.h"
 
-struct bplus_tree_config {
-        int order;
-        int entries;
-};
-
 static unsigned int valid_ins;
 static unsigned int valid_query;
 static unsigned int valid_del;
@@ -152,11 +147,7 @@ void exec_file(char *file, struct bplus_tree *tree)
 
 int main(void)
 {
-        struct bplus_tree_config config;
-        config.order=64;
-        config.entries=64;
-
-        struct bplus_tree *tree = bplus_tree_init(config.order, config.entries);
+        struct bplus_tree *tree = bplus_tree_init("test.bp", 512);
 
         exec_file("testcase", tree);
 
