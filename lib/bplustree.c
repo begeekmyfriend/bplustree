@@ -1101,9 +1101,9 @@ str_to_hex(char *c, int len)
                         offset = offset * 16 + *c - '0';
                 } else if (isxdigit(*c)) {
                         if (islower(*c)) {
-                                offset = offset * 16 + *c - 'a';
+                                offset = offset * 16 + *c - 'a' + 10;
                         } else {
-                                offset = offset * 16 + *c - 'A';
+                                offset = offset * 16 + *c - 'A' + 10;
                         }
                 }
                 c++;
@@ -1145,7 +1145,6 @@ bplus_tree_init(char *filename, int block_size)
         assert((block_size & (block_size - 1)) == 0);
         struct bplus_tree *tree = calloc(1, sizeof(*tree));
         if (tree != NULL) {
-                tree->block_size = block_size;
                 /* load metadata */
                 list_init(&tree->free_blocks);
                 int fd = open("/tmp/metadata.bp", O_RDWR, 0644);
@@ -1163,6 +1162,7 @@ bplus_tree_init(char *filename, int block_size)
                         close(fd);
                 } else {
                         tree->root = INVALID_OFFSET;
+                        tree->block_size = block_size;
                         tree->file_size = 0;
                 }
                 /* set order and entries */
