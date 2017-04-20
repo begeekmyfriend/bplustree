@@ -649,6 +649,22 @@ bplus_tree_insert(struct bplus_tree *tree, int key, long data)
         return 0;
 }
 
+static int
+sibling_select(struct bplus_node *l_sib, struct bplus_node *r_sib,
+                struct bplus_node *parent, int i)
+{
+        if (i == -1) {
+                /* the frist sub-node, no left sibling, choose the right one */
+                return RIGHT_SIBLING;
+        } else if (i == parent->count - 2) {
+                /* the last sub-node, no right sibling, choose the left one */
+                return LEFT_SIBLING;
+        } else {
+                /* if both left and right sibling found, choose the one with more children */
+                return l_sib->count >= r_sib->count ? LEFT_SIBLING : RIGHT_SIBLING;
+        }
+}
+
 static void
 non_leaf_simple_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
 {
@@ -737,8 +753,8 @@ non_leaf_shift_from_right(struct bplus_tree *tree, struct bplus_node *node,
         right->count--;
         /* node, parent and right sibling cache flush */
         node_flush(tree, node);
-        node_flush(tree, parent);
         node_flush(tree, right);
+        node_flush(tree, parent);
 }
 
 static void
@@ -769,27 +785,23 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
                 struct bplus_node *r_sib = node_fetch(tree, node->next);
                 struct bplus_node *parent = node_fetch(tree, node->parent);
                 if (parent != NULL) {
-                        /* decide which sibling to be borrowed from */
-                        int borrow = 0;
                         int i = node->parent_key_idx;
-                        if (i == -1) {
-                                /* the frist sub-node, no left sibling, choose the right one */
-                                borrow = RIGHT_SIBLING;
-                        } else if (i == parent->count - 2) {
-                                /* the last sub-node, no right sibling, choose the left one */
-                                borrow = LEFT_SIBLING;
-                        } else {
-                                /* if both left and right sibling found, choose the one with more children */
-                                borrow = l_sib->count >= r_sib->count ? LEFT_SIBLING : RIGHT_SIBLING;
-                        }
-
-                        if (borrow == LEFT_SIBLING) {
+                        /* decide which sibling to be borrowed from */
+                        if (sibling_select(l_sib, r_sib, parent, i)  == LEFT_SIBLING) {
                                 if (l_sib->count > (tree->order + 1) / 2) {
                                         non_leaf_shift_from_left(tree, node, l_sib, parent, i, remove);
+                                        /* right sibling cache flush */
+                                        if (r_sib != NULL && r_sib->cache != NULL) {
+                                                node_flush(tree, r_sib);
+                                        }
                                 } else {
                                         non_leaf_merge_into_left(tree, node, l_sib, parent, i, remove);
                                         /* delete empty node and cache flush */
                                         node_delete(tree, node, l_sib, r_sib);
+                                        /* right sibling cache flush */
+                                        if (r_sib != NULL && r_sib->cache != NULL) {
+                                                node_flush(tree, r_sib);
+                                        }
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i);
                                 }
@@ -799,11 +811,19 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
                                 /* shift or merge */
                                 if (r_sib->count > (tree->order + 1) / 2) {
                                         non_leaf_shift_from_right(tree, node, r_sib, parent, i + 1);
+                                        /* left sibling cache flush */
+                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                                node_flush(tree, l_sib);
+                                        }
                                 } else {
                                         non_leaf_merge_from_right(tree, node, r_sib, parent, i + 1);
                                         /* delete empty right sibling and cache flush */
                                         struct bplus_node *rr = node_fetch(tree, r_sib->next);
                                         node_delete(tree, r_sib, node, rr);
+                                        /* left sibling cache flush */
+                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                                node_flush(tree, l_sib);
+                                        }
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i + 1);
                                 }
@@ -934,27 +954,23 @@ leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, int key)
                 struct bplus_node *r_sib = node_fetch(tree, leaf->next);
                 struct bplus_node *parent = node_fetch(tree, leaf->parent);
                 if (parent != NULL) {
-                        /* decide which sibling to be borrowed from */
-                        int borrow = 0;
                         int i = leaf->parent_key_idx;
-                        if (i == -1) {
-                                /* the frist sub-node, no left sibling, choose the right one */
-                                borrow = RIGHT_SIBLING;
-                        } else if (i == parent->count - 2) {
-                                /* the last sub-node, no right sibling, choose the left one */
-                                borrow = LEFT_SIBLING;
-                        } else {
-                                /* if both left and right sibling found, choose the one with more entries */
-                                borrow = l_sib->count >= r_sib->count ? LEFT_SIBLING : RIGHT_SIBLING;
-                        }
-
-                        if (borrow == LEFT_SIBLING) {
+                        /* decide which sibling to be borrowed from */
+                        if (sibling_select(l_sib, r_sib, parent, i) == LEFT_SIBLING) {
                                 if (l_sib->count > (tree->entries + 1) / 2) {
                                         leaf_shift_from_left(tree, leaf, l_sib, parent, i, remove);
+                                        /* right sibling cache flush */
+                                        if (r_sib != NULL && r_sib->cache != NULL) {
+                                                node_flush(tree, r_sib);
+                                        }
                                 } else {
                                         leaf_merge_into_left(tree, leaf, l_sib, i, remove);
                                         /* delete empty leaf and cache flush */
                                         node_delete(tree, leaf, l_sib, r_sib);
+                                        /* right sibling cache flush */
+                                        if (r_sib != NULL && r_sib->cache != NULL) {
+                                                node_flush(tree, r_sib);
+                                        }
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i);
                                 }
@@ -964,11 +980,19 @@ leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, int key)
                                 /* shift or merge */
                                 if (r_sib->count > (tree->entries + 1) / 2) {
                                         leaf_shift_from_right(tree, leaf, r_sib, parent, i + 1);
+                                        /* left sibling cache flush */
+                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                                node_flush(tree, l_sib);
+                                        }
                                 } else {
                                         leaf_merge_from_right(tree, leaf, r_sib);
                                         /* delete empty right sibling and cache flush */
                                         struct bplus_node *rr = node_fetch(tree, r_sib->next);
                                         node_delete(tree, r_sib, leaf, rr);
+                                        /* left sibling cache flush */
+                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                                node_flush(tree, l_sib);
+                                        }
                                         /* trace upwards */
                                         non_leaf_remove(tree, parent, i + 1);
                                 }
@@ -1168,7 +1192,7 @@ bplus_tree_init(char *filename, int block_size)
                 printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
                 /* init node cache */
                 list_init(&tree->free_caches);
-                for (i = 0; i < 100000; i++) {
+                for (i = 0; i < 64; i++) {
                         struct free_cache *cache = calloc(1, sizeof(*cache));
                         assert(cache != NULL);
                         cache->buf = malloc(tree->block_size);
