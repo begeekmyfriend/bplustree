@@ -21,16 +21,16 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
 {
         int i, size, ret = 0, again = 1;
 
-        fprintf(stderr, "\n-- B+tree setting...\n");
-        fprintf(stderr, "Set b+tree file name (e.g. /tmp/data.bp): ");
+        printf("\n-- B+tree setting...\n");
+        printf("Set data index file name (e.g. /tmp/data.index): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
-                        fprintf(stderr, "\n");
+                        printf("\n");
                 case 'q':
                         return -1;
                 case '\n':
-                        strcpy(config->filename, "/tmp/data.bp");
+                        strcpy(config->filename, "/tmp/data.index");
                         again = 0;
                         break;
                 default:
@@ -47,11 +47,11 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         }
 
         again = 1;
-        fprintf(stderr, "Set b+tree block size (power of 2, e.g. 128): ");
+        printf("Set index file block size (power of 2, e.g. 128): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
-                        fprintf(stderr, "\n");
+                        printf("\n");
                 case 'q':
                         return -1;
                 case '\n':
@@ -87,7 +87,7 @@ static void _proc(struct bplus_tree *tree, char op, int n)
                         bplus_tree_put(tree, n, 0);
                         break;
                 case 's':
-                        fprintf(stderr, "key:%d data:%ld\n", n, bplus_tree_get(tree, n));
+                        printf("key:%d data_index:%ld\n", n, bplus_tree_get(tree, n));
                         break;
                 default:
                         break;
@@ -152,27 +152,27 @@ static int number_process(struct bplus_tree *tree, char op)
                 }
         }
 
-        fprintf(stderr, "\n");
+        printf("\n");
         return -1;
 }
 
 static void command_tips(void)
 {
-        fprintf(stderr, "i: Insert key. e.g. i 1 4-7 9\n");
-        fprintf(stderr, "r: Remove key. e.g. r 1-100\n");
-        fprintf(stderr, "s: Search by key. e.g. s 41-60\n");
-        fprintf(stderr, "d: Dump the tree structure.\n");
-        fprintf(stderr, "q: quit.\n");
+        printf("i: Insert key. e.g. i 1 4-7 9\n");
+        printf("r: Remove key. e.g. r 1-100\n");
+        printf("s: Search by key. e.g. s 41-60\n");
+        printf("d: Dump the tree structure.\n");
+        printf("q: quit.\n");
 }
 
 static void command_process(struct bplus_tree *tree)
 {
         int c;
-        fprintf(stderr, "Please input command (Type 'h' for help): ");
+        printf("Please input command (Type 'h' for help): ");
         for (; ;) {
                 switch (c = getchar()) {
                 case EOF:
-                        fprintf(stderr, "\n");
+                        printf("\n");
                 case 'q':
                         return;
                 case 'h':
@@ -188,7 +188,7 @@ static void command_process(struct bplus_tree *tree)
                                 return;
                         }
                 case '\n':
-                        fprintf(stderr, "Please input command (Type 'h' for help): ");
+                        printf("Please input command (Type 'h' for help): ");
                 default:
                         break;
                 }

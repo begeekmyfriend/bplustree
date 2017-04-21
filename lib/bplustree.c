@@ -86,7 +86,7 @@ node_new(struct bplus_tree *tree)
         return node;
 }
 
-static struct bplus_node *
+static inline struct bplus_node *
 non_leaf_new(struct bplus_tree *tree)
 {
         struct bplus_node *node = node_new(tree);
@@ -94,7 +94,7 @@ non_leaf_new(struct bplus_tree *tree)
         return node;
 }
 
-static struct bplus_node *
+static inline struct bplus_node *
 leaf_new(struct bplus_tree *tree)
 {
         struct bplus_node *node = node_new(tree);
@@ -160,7 +160,7 @@ node_flush(struct bplus_tree *tree, struct bplus_node *node)
         assert(len == tree->block_size);
 }
 
-static void
+static inline void
 node_release(struct bplus_tree *tree, struct bplus_node *node)
 {
         node_flush(tree, node);
@@ -215,7 +215,7 @@ node_delete(struct bplus_tree *tree, struct bplus_node *node,
         cache_defer(tree, node);
 }
 
-static void
+static inline void
 sub_node_update(struct bplus_tree *tree, struct bplus_node *parent,
                 int i, struct bplus_node *sub_node)
 {
@@ -226,7 +226,7 @@ sub_node_update(struct bplus_tree *tree, struct bplus_node *parent,
         node_release(tree, sub_node);
 }
 
-static void
+static inline void
 sub_node_flush(struct bplus_tree *tree, struct bplus_node *parent,
                 off_t sub_offset, int key_idx)
 {
@@ -333,23 +333,6 @@ parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
                 return non_leaf_insert(tree, node_fetch(tree, r_ch->parent),
                                         l_ch, r_ch, key, level + 1);
         }
-}
-
-static void
-non_leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *node,
-                        struct bplus_node *l_ch, struct bplus_node *r_ch,
-                        int key, int insert)
-{
-        int i;
-        for (i = node->count - 1; i > insert; i--) {
-                key(node)[i] = key(node)[i - 1];
-                sub(node)[i + 1] = sub(node)[i];
-                sub_node_flush(tree, node, sub(node)[i + 1], i);
-        }
-        key(node)[i] = key;
-        sub_node_update(tree, node, i, l_ch);
-        sub_node_update(tree, node, i + 1, r_ch);
-        node->count++;
 }
 
 static int
@@ -470,6 +453,23 @@ non_leaf_split_right2(struct bplus_tree *tree, struct bplus_node *node,
         return split_key;
 }
 
+static void
+non_leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *node,
+                        struct bplus_node *l_ch, struct bplus_node *r_ch,
+                        int key, int insert)
+{
+        int i;
+        for (i = node->count - 1; i > insert; i--) {
+                key(node)[i] = key(node)[i - 1];
+                sub(node)[i + 1] = sub(node)[i];
+                sub_node_flush(tree, node, sub(node)[i + 1], i);
+        }
+        key(node)[i] = key;
+        sub_node_update(tree, node, i, l_ch);
+        sub_node_update(tree, node, i + 1, r_ch);
+        node->count++;
+}
+
 static int
 non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
                 struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level)
@@ -503,20 +503,6 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
                 node_release(tree, node);
         }
         return 0;
-}
-
-static void
-leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *leaf,
-                int key, long data, int insert)
-{
-        int i;
-        for (i = leaf->count; i > insert; i--) {
-                key(leaf)[i] = key(leaf)[i - 1];
-                data(leaf)[i] = data(leaf)[i - 1];
-        }
-        key(leaf)[i] = key;
-        data(leaf)[i] = data;
-        leaf->count++;
 }
 
 static void
@@ -583,6 +569,20 @@ leaf_split_right(struct bplus_tree *tree, struct bplus_node *leaf,
         data(right)[j] = data;
         /* left leaf number */
         leaf->count = split;
+}
+
+static void
+leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *leaf,
+                int key, long data, int insert)
+{
+        int i;
+        for (i = leaf->count; i > insert; i--) {
+                key(leaf)[i] = key(leaf)[i - 1];
+                data(leaf)[i] = data(leaf)[i - 1];
+        }
+        key(leaf)[i] = key;
+        data(leaf)[i] = data;
+        leaf->count++;
 }
 
 static int
@@ -652,7 +652,7 @@ bplus_tree_insert(struct bplus_tree *tree, int key, long data)
         return 0;
 }
 
-static int
+static inline int
 sibling_select(struct bplus_node *l_sib, struct bplus_node *r_sib,
                 struct bplus_node *parent, int i)
 {
@@ -666,18 +666,6 @@ sibling_select(struct bplus_node *l_sib, struct bplus_node *r_sib,
                 /* if both left and right sibling found, choose the one with more children */
                 return l_sib->count >= r_sib->count ? LEFT_SIBLING : RIGHT_SIBLING;
         }
-}
-
-static void
-non_leaf_simple_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
-{
-        assert(node->count >= 2);
-        for (; remove < node->count - 2; remove++) {
-                key(node)[remove] = key(node)[remove + 1];
-                sub(node)[remove + 1] = sub(node)[remove + 2];
-                sub_node_flush(tree, node, sub(node)[remove + 1], remove);
-        }
-        node->count--;
 }
 
 static void
@@ -772,6 +760,18 @@ non_leaf_merge_from_right(struct bplus_tree *tree, struct bplus_node *node,
         node->count = i;
 }
 
+static inline void
+non_leaf_simple_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
+{
+        assert(node->count >= 2);
+        for (; remove < node->count - 2; remove++) {
+                key(node)[remove] = key(node)[remove + 1];
+                sub(node)[remove + 1] = sub(node)[remove + 2];
+                sub_node_flush(tree, node, sub(node)[remove + 1], remove);
+        }
+        node->count--;
+}
+
 static void
 non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
 {
@@ -846,16 +846,6 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
 }
 
 static void
-leaf_simple_remove(struct bplus_tree *tree, struct bplus_node *leaf, int remove)
-{
-        for (; remove < leaf->count - 1; remove++) {
-                key(leaf)[remove] = key(leaf)[remove + 1];
-                data(leaf)[remove] = data(leaf)[remove + 1];
-        }
-        leaf->count--;
-}
-
-static void
 leaf_shift_from_left(struct bplus_tree *tree, struct bplus_node *leaf,
                 struct bplus_node *left, struct bplus_node *parent,
                 int parent_key_index, int remove)
@@ -920,6 +910,16 @@ leaf_merge_from_right(struct bplus_tree *tree, struct bplus_node *leaf,
                 data(leaf)[i] = data(right)[j];
         }
         leaf->count = i;
+}
+
+static inline void
+leaf_simple_remove(struct bplus_tree *tree, struct bplus_node *leaf, int remove)
+{
+        for (; remove < leaf->count - 1; remove++) {
+                key(leaf)[remove] = key(leaf)[remove + 1];
+                data(leaf)[remove] = data(leaf)[remove + 1];
+        }
+        leaf->count--;
 }
 
 static int
@@ -1045,7 +1045,7 @@ bplus_tree_put(struct bplus_tree *tree, int key, long data)
 long
 bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
 {
-        long data = 0;
+        long start = -1;
         int min = key1 <= key2 ? key1 : key2;
         int max = min == key1 ? key2 : key1;
         struct bplus_node *node = node_seek(tree, tree->root);
@@ -1060,7 +1060,7 @@ bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
                                 }
                         }
                         while (node != NULL && key(node)[i] <= max) {
-                                data = data(node)[i];
+                                start = data(node)[i];
                                 if (++i >= node->count) {
                                         node = node_seek(tree, node->next);
                                         i = 0;
@@ -1077,7 +1077,7 @@ bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
                 }
         }
 
-        return data;
+        return start;
 }
 
 int
@@ -1111,7 +1111,7 @@ str_to_hex(char *c, int len)
         return offset;
 }
 
-static void
+static inline void
 hex_to_str(off_t offset, char *buf, int len)
 {
         const static char *hex = "0123456789ABCDEF";

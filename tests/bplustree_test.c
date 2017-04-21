@@ -42,21 +42,21 @@ static void bplus_tree_get_put_test(struct bplus_tree *tree)
         bplus_tree_put(tree, 84, 84);
         bplus_tree_dump(tree);
 
-        printf("key:24 data:%ld\n", bplus_tree_get(tree, 24));
-        printf("key:72 data:%ld\n", bplus_tree_get(tree, 72));
-        printf("key:1  data:%ld\n", bplus_tree_get(tree, 1));
-        printf("key:39 data:%ld\n", bplus_tree_get(tree, 39));
-        printf("key:53 data:%ld\n", bplus_tree_get(tree, 53));
-        printf("key:63 data:%ld\n", bplus_tree_get(tree, 63));
-        printf("key:90 data:%ld\n", bplus_tree_get(tree, 90));
-        printf("key:88 data:%ld\n", bplus_tree_get(tree, 88));
-        printf("key:15 data:%ld\n", bplus_tree_get(tree, 15));
-        printf("key:10 data:%ld\n", bplus_tree_get(tree, 10));
-        printf("key:44 data:%ld\n", bplus_tree_get(tree, 44));
-        printf("key:68 data:%ld\n", bplus_tree_get(tree, 68));
+        printf("key:24 data index:%ld\n", bplus_tree_get(tree, 24));
+        printf("key:72 data index:%ld\n", bplus_tree_get(tree, 72));
+        printf("key:1  data index:%ld\n", bplus_tree_get(tree, 1));
+        printf("key:39 data index:%ld\n", bplus_tree_get(tree, 39));
+        printf("key:53 data index:%ld\n", bplus_tree_get(tree, 53));
+        printf("key:63 data index:%ld\n", bplus_tree_get(tree, 63));
+        printf("key:90 data index:%ld\n", bplus_tree_get(tree, 90));
+        printf("key:88 data index:%ld\n", bplus_tree_get(tree, 88));
+        printf("key:15 data index:%ld\n", bplus_tree_get(tree, 15));
+        printf("key:10 data index:%ld\n", bplus_tree_get(tree, 10));
+        printf("key:44 data index:%ld\n", bplus_tree_get(tree, 44));
+        printf("key:68 data index:%ld\n", bplus_tree_get(tree, 68));
 
         /* Not found */
-        printf("key:100 data:%ld\n", bplus_tree_get(tree, 100));
+        printf("key:100 data index:%ld\n", bplus_tree_get(tree, 100));
 
         /* Clear all */
         printf("\n> Clear all...\n");
@@ -66,7 +66,7 @@ static void bplus_tree_get_put_test(struct bplus_tree *tree)
         bplus_tree_dump(tree);
 
         /* Not found */
-        printf("key:100 data:%ld\n", bplus_tree_get(tree, 100));
+        printf("key:100 data index:%ld\n", bplus_tree_get(tree, 100));
 }
 
 static void bplus_tree_insert_delete_test(struct bplus_tree *tree)
@@ -133,9 +133,9 @@ static void bplus_tree_test(void)
         printf("\n>>> B+tree general test.\n");
 
         /* Init b+tree */
-        struct bplus_tree *tree = bplus_tree_init("/tmp/data.bp", 128);
+        struct bplus_tree *tree = bplus_tree_init("/tmp/data.index", 128);
         if (tree == NULL) {
-                printf("Init failure!\n");
+                fprintf(stderr, "Init failure!\n");
                 exit(-1);
         }
 

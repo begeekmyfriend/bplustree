@@ -10,10 +10,10 @@ static unsigned int valid_del;
 
 static void show_running_info(void)
 {
-        fprintf(stderr,"$$ VALID INSERT:%u\n",valid_ins);
-        fprintf(stderr,"$$ VALID QUERY:%u\n",valid_query);
-        fprintf(stderr,"$$ VALID DELETE:%u\n",valid_del);
-        fprintf(stderr,"###DONE###\n");
+        printf("$$ VALID INSERT:%u\n",valid_ins);
+        printf("$$ VALID QUERY:%u\n",valid_query);
+        printf("$$ VALID DELETE:%u\n",valid_del);
+        printf("###DONE###\n");
 }
 
 static unsigned char huge_array[INT_MAX>>3] = { 0 };
@@ -147,12 +147,9 @@ void exec_file(char *file, struct bplus_tree *tree)
 
 int main(void)
 {
-        struct bplus_tree *tree = bplus_tree_init("/tmp/data.bp", 512);
-
+        struct bplus_tree *tree = bplus_tree_init("/tmp/data.index", 512);
         exec_file("testcase", tree);
-
         show_running_info();
         bplus_tree_deinit(tree);
-
         return 0;
 }
