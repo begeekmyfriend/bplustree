@@ -1143,50 +1143,64 @@ bplus_tree_init(char *filename, int block_size)
         int i;
         struct bplus_node node;
         assert((block_size & (block_size - 1)) == 0);
-        struct bplus_tree *tree = calloc(1, sizeof(*tree));
-        if (tree != NULL) {
-                /* load metadata */
-                list_init(&tree->free_blocks);
-                strcpy(tree->filename, filename);
-                int fd = open(strcat(tree->filename, ".metadata"), O_RDWR, 0644);
-                if (fd >= 0) {
-                        tree->root = offset_load(fd);
-                        tree->block_size = offset_load(fd);
-                        tree->file_size = offset_load(fd);
-                        /* load free blocks */
-                        while ((i = offset_load(fd)) != INVALID_OFFSET) {
-                                struct free_block *block = malloc(sizeof(*block));
-                                assert(block != NULL);
-                                block->offset = i;
-                                list_add(&block->link, &tree->free_blocks);
-                        }
-                        close(fd);
-                } else {
-                        tree->root = INVALID_OFFSET;
-                        tree->block_size = block_size;
-                        tree->file_size = 0;
-                }
-                /* set order and entries */
-                max_order = tree->order = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
-                max_entries = tree->entries = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
-                if (tree->order <= 2) {
-                        fprintf(stderr, "block size is too small for one node!\n");
-                        exit(-1);
-                }
-                printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
-                /* init node cache */
-                list_init(&tree->free_caches);
-                for (i = 0; i < MIN_CACHE_NUM; i++) {
-                        struct free_cache *cache = calloc(1, sizeof(*cache));
-                        assert(cache != NULL);
-                        cache->buf = malloc(tree->block_size);
-                        assert(cache->buf != NULL);
-                        list_add(&cache->link, &tree->free_caches);
-                }
-                /* open data file */
-                tree->fd = bplus_open(filename);
-                assert(tree->fd >= 0);
+
+        if (strlen(filename) >= 1024) {
+                fprintf(stderr, "Index file name too long!\n");
+                return NULL;
         }
+
+        max_order = (block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
+        max_entries = (block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
+        if (max_order <= 2) {
+                fprintf(stderr, "block size is too small for one node!\n");
+                return NULL;
+        }
+
+        struct bplus_tree *tree = calloc(1, sizeof(*tree));
+        assert(tree != NULL);
+        list_init(&tree->free_blocks);
+        strcpy(tree->filename, filename);
+
+        /* load index boot file */
+        int fd = open(strcat(tree->filename, ".boot"), O_RDWR, 0644);
+        if (fd >= 0) {
+                tree->root = offset_load(fd);
+                tree->block_size = offset_load(fd);
+                tree->file_size = offset_load(fd);
+                /* load free blocks */
+                while ((i = offset_load(fd)) != INVALID_OFFSET) {
+                        struct free_block *block = malloc(sizeof(*block));
+                        assert(block != NULL);
+                        block->offset = i;
+                        list_add(&block->link, &tree->free_blocks);
+                }
+                close(fd);
+        } else {
+                tree->root = INVALID_OFFSET;
+                tree->block_size = block_size;
+                tree->file_size = 0;
+        }
+
+        /* set order and entries */
+        max_order = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
+        max_entries = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
+        tree->order = max_order;
+        tree->entries = max_entries;
+        printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
+
+        /* init node cache */
+        list_init(&tree->free_caches);
+        for (i = 0; i < MIN_CACHE_NUM; i++) {
+                struct free_cache *cache = calloc(1, sizeof(*cache));
+                assert(cache != NULL);
+                cache->buf = malloc(tree->block_size);
+                assert(cache->buf != NULL);
+                list_add(&cache->link, &tree->free_caches);
+        }
+
+        /* open data file */
+        tree->fd = bplus_open(filename);
+        assert(tree->fd >= 0);
         return tree;
 }
 

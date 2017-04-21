@@ -197,25 +197,15 @@ static void command_process(struct bplus_tree *tree)
 
 int main(void)
 {
-        struct bplus_tree *tree;
         struct bplus_tree_config config;
-
-        /* B+tree default setting */
-        if (bplus_tree_setting(&config) < 0) {
-                return 0;
+        struct bplus_tree *tree = NULL;
+        while (tree == NULL) {
+                if (bplus_tree_setting(&config) < 0) {
+                        return 0;
+                }
+                tree = bplus_tree_init(config.filename, config.block_size);
         }
-
-        /* Init b+tree */
-        tree = bplus_tree_init(config.filename, config.block_size);
-        if (tree == NULL) {
-                fprintf(stderr, "Init failure!\n");
-                exit(-1);
-        }
-
-        /* Operation process */
         command_process(tree);
-
-        /* Deinit b+tree */
         bplus_tree_deinit(tree);
 
         return 0;
