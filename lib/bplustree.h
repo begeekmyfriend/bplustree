@@ -118,6 +118,7 @@ struct bplus_leaf {
 };
 */
 struct bplus_tree {
+        char filename[1024];
         int fd;
         int order;
         int entries;

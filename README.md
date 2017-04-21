@@ -13,8 +13,6 @@ Demo
 General Test
 ------------
 
-**NOTE** Exceptional test included, do not get bothered:)
-
 ```shell
 ./test_build.sh
 ```

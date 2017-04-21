@@ -789,7 +789,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
                                         node_release(tree, node);
                                         node_release(tree, l_sib);
                                         node_release(tree, parent);
-                                        if (r_sib != NULL && r_sib->cache != NULL) {
+                                        if (r_sib != NULL) {
                                                 node_release(tree, r_sib);
                                         }
                                 } else {
@@ -808,7 +808,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
                                         node_release(tree, node);
                                         node_release(tree, r_sib);
                                         node_release(tree, parent);
-                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                        if (l_sib != NULL) {
                                                 node_release(tree, l_sib);
                                         }
                                 } else {
@@ -816,7 +816,7 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
                                         /* delete empty right sibling and release */
                                         struct bplus_node *rr = node_fetch(tree, r_sib->next);
                                         node_delete(tree, r_sib, node, rr);
-                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                        if (l_sib != NULL) {
                                                 node_release(tree, l_sib);
                                         }
                                         /* trace upwards */
@@ -948,7 +948,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, int key)
                                         node_release(tree, leaf);
                                         node_release(tree, l_sib);
                                         node_release(tree, parent);
-                                        if (r_sib != NULL && r_sib->cache != NULL) {
+                                        if (r_sib != NULL) {
                                                 node_release(tree, r_sib);
                                         }
                                 } else {
@@ -967,7 +967,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, int key)
                                         node_release(tree, leaf);
                                         node_release(tree, r_sib);
                                         node_release(tree, parent);
-                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                        if (l_sib != NULL) {
                                                 node_release(tree, l_sib);
                                         }
                                 } else {
@@ -975,7 +975,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, int key)
                                         /* delete empty right sibling release */
                                         struct bplus_node *rr = node_fetch(tree, r_sib->next);
                                         node_delete(tree, r_sib, leaf, rr);
-                                        if (l_sib != NULL && l_sib->cache != NULL) {
+                                        if (l_sib != NULL) {
                                                 node_release(tree, l_sib);
                                         }
                                         /* trace upwards */
@@ -1147,7 +1147,8 @@ bplus_tree_init(char *filename, int block_size)
         if (tree != NULL) {
                 /* load metadata */
                 list_init(&tree->free_blocks);
-                int fd = open("/tmp/metadata.bp", O_RDWR, 0644);
+                strcpy(tree->filename, filename);
+                int fd = open(strcat(tree->filename, ".metadata"), O_RDWR, 0644);
                 if (fd >= 0) {
                         tree->root = offset_load(fd);
                         tree->block_size = offset_load(fd);
@@ -1193,7 +1194,7 @@ void
 bplus_tree_deinit(struct bplus_tree *tree)
 {
         struct list_head *pos, *n;
-        int fd = open("/tmp/metadata.bp", O_CREAT | O_RDWR, 0644);
+        int fd = open(tree->filename, O_CREAT | O_RDWR, 0644);
         assert(fd >= 0);
         assert(offset_store(fd, tree->root) == 8);
         assert(offset_store(fd, tree->block_size) == 8);
