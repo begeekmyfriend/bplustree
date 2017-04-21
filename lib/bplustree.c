@@ -29,7 +29,7 @@ enum {
         RIGHT_SIBLING = 1,
 };
 
-#define MAX_CACHE_NUM 10
+#define MIN_CACHE_NUM 5
 #define offset_ptr(node) ((char *)node + sizeof(*node))
 #define key(node) ((int *)offset_ptr(node))
 #define data(node) ((long *)(offset_ptr(node) + max_entries * sizeof(int)))
@@ -1175,7 +1175,7 @@ bplus_tree_init(char *filename, int block_size)
                 printf("config node order:%d and leaf entries:%d\n", tree->order, tree->entries);
                 /* init node cache */
                 list_init(&tree->free_caches);
-                for (i = 0; i < MAX_CACHE_NUM; i++) {
+                for (i = 0; i < MIN_CACHE_NUM; i++) {
                         struct free_cache *cache = calloc(1, sizeof(*cache));
                         assert(cache != NULL);
                         cache->buf = malloc(tree->block_size);
