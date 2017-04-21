@@ -1206,6 +1206,12 @@ bplus_tree_deinit(struct bplus_tree *tree)
                 assert(offset_store(fd, block->offset) == 8);
                 free(block);
         }
+        /* free node caches */
+        list_for_each_safe(pos, n, &tree->free_caches) {
+                struct free_cache *cache = list_entry(pos, struct free_cache, link);
+                free(cache->buf);
+                free(cache);
+        }
         close(fd);
         bplus_close(tree->fd);
         free(tree);
