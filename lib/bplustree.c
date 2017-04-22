@@ -118,7 +118,6 @@ cache_defer(struct bplus_tree *tree, struct bplus_node *node)
         /* return the cache borrowed from */
         struct free_cache *cache = node->cache;
         list_add_tail(&cache->link, &tree->free_caches);
-        node = NULL;
 }
 
 static struct bplus_node *
@@ -1024,12 +1023,7 @@ bplus_tree_delete(struct bplus_tree *tree, int key)
 long
 bplus_tree_get(struct bplus_tree *tree, int key)
 {
-        long data = bplus_tree_search(tree, key); 
-        if (data) {
-                return data;
-        } else {
-                return -1;
-        }
+        return bplus_tree_search(tree, key);
 }
 
 int
