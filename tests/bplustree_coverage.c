@@ -150,6 +150,12 @@ int main(void)
         struct bplus_tree *tree = bplus_tree_init("/tmp/data.index", 512);
         exec_file("testcase", tree);
         show_running_info();
+        /* test range search */
+        bplus_tree_get_range(tree, 10000, 100000);
         bplus_tree_deinit(tree);
+
+        tree = bplus_tree_init("/tmp/data.index", 0);
+        bplus_tree_deinit(tree);
+
         return 0;
 }
