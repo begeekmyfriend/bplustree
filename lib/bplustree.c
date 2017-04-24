@@ -1,12 +1,11 @@
 /*
- * Copyright (C) 2015, Leo Ma <begeekmyfriend@gmail.com>
+ * Copyright (C) 2017, Leo Ma <begeekmyfriend@gmail.com>
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <ctype.h>
 #include <unistd.h>
@@ -29,6 +28,8 @@ enum {
         RIGHT_SIBLING = 1,
 };
 
+/* 5 node caches are needed at least for self, left and right sibling, sibling
+ * of sibling, parent and node seeking */
 #define MIN_CACHE_NUM 5
 #define offset_ptr(node) ((char *)node + sizeof(*node))
 #define key(node) ((int *)offset_ptr(node))
@@ -71,9 +72,9 @@ key_binary_search(struct bplus_node *node, int target)
 static struct bplus_node *
 node_new(struct bplus_tree *tree)
 {
-        struct free_cache *cache;
+        struct node_cache *cache;
         assert(!list_empty(&tree->free_caches));
-        cache = list_first_entry(&tree->free_caches, struct free_cache, link);
+        cache = list_first_entry(&tree->free_caches, struct node_cache, link);
         list_del(&cache->link);
         struct bplus_node *node = (struct bplus_node *)cache->buf;
         node->cache = cache;
@@ -102,12 +103,12 @@ leaf_new(struct bplus_tree *tree)
         return node;
 }
 
-static inline struct free_cache *
+static inline struct node_cache *
 cache_refer(struct bplus_tree *tree)
 {
-        struct free_cache *cache;
+        struct node_cache *cache;
         assert(!list_empty(&tree->free_caches));
-        cache = list_first_entry(&tree->free_caches, struct free_cache, link);
+        cache = list_first_entry(&tree->free_caches, struct node_cache, link);
         list_del(&cache->link);
         return cache;
 }
@@ -116,7 +117,7 @@ static inline void
 cache_defer(struct bplus_tree *tree, struct bplus_node *node)
 {
         /* return the cache borrowed from */
-        struct free_cache *cache = node->cache;
+        struct node_cache *cache = node->cache;
         list_add_tail(&cache->link, &tree->free_caches);
 }
 
@@ -127,7 +128,7 @@ node_fetch(struct bplus_tree *tree, off_t offset)
                 return NULL;
         }
 
-        struct free_cache *cache = cache_refer(tree);
+        struct node_cache *cache = cache_refer(tree);
         int len = pread(tree->fd, cache->buf, tree->block_size, offset);
         assert(len == tree->block_size);
         struct bplus_node *node = (struct bplus_node *)cache->buf;
@@ -142,9 +143,9 @@ node_seek(struct bplus_tree *tree, off_t offset)
                 return NULL;
         }
 
-        struct free_cache *cache;
+        struct node_cache *cache;
         assert(!list_empty(&tree->free_caches));
-        cache = list_first_entry(&tree->free_caches, struct free_cache, link);
+        cache = list_first_entry(&tree->free_caches, struct node_cache, link);
         int len = pread(tree->fd, cache->buf, tree->block_size, offset);
         assert(len == tree->block_size);
         struct bplus_node *node = (struct bplus_node *)cache->buf;
@@ -1185,7 +1186,7 @@ bplus_tree_init(char *filename, int block_size)
         /* init node cache */
         list_init(&tree->free_caches);
         for (i = 0; i < MIN_CACHE_NUM; i++) {
-                struct free_cache *cache = calloc(1, sizeof(*cache));
+                struct node_cache *cache = calloc(1, sizeof(*cache));
                 assert(cache != NULL);
                 cache->buf = malloc(tree->block_size);
                 assert(cache->buf != NULL);
@@ -1216,7 +1217,7 @@ bplus_tree_deinit(struct bplus_tree *tree)
         }
         /* free node caches */
         list_for_each_safe(pos, n, &tree->free_caches) {
-                struct free_cache *cache = list_entry(pos, struct free_cache, link);
+                struct node_cache *cache = list_entry(pos, struct node_cache, link);
                 free(cache->buf);
                 free(cache);
         }

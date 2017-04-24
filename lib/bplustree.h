@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Leo Ma <begeekmyfriend@gmail.com>
+ * Copyright (C) 2017, Leo Ma <begeekmyfriend@gmail.com>
  */
 
 #ifndef _BPLUS_TREE_H
@@ -72,13 +72,13 @@ typedef struct free_block {
         off_t offset;
 } free_block;
 
-typedef struct free_cache {
+typedef struct node_cache {
         struct list_head link;
         char *buf;
 } free_cache;
 
 typedef struct bplus_node {
-        struct free_cache *cache;
+        struct node_cache *cache;
         off_t self;
         off_t parent;
         off_t prev;
@@ -90,7 +90,7 @@ typedef struct bplus_node {
 } bplus_node;
 /*
 struct bplus_non_leaf {
-        struct free_cache *borrowed;
+        struct node_cache *cache;
         off_t self;
         off_t parent;
         off_t prev;
@@ -104,7 +104,7 @@ struct bplus_non_leaf {
 };
 
 struct bplus_leaf {
-        struct free_cache *borrowed;
+        struct node_cache *cache;
         off_t self;
         off_t parent;
         off_t prev;
