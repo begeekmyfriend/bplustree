@@ -393,18 +393,20 @@ non_leaf_split_right1(struct bplus_tree *tree, struct bplus_node *node,
                         struct bplus_node *right, struct bplus_node *l_ch,
                         struct bplus_node *r_ch, int key, int insert)
 {
-        int i, j, split_key = key;
+        int i, j;
         /* split = [m/2] */
         int split = (tree->order + 1) / 2;
         /* split as right sibling */
         right_node_add(tree, node, right);
-        /* left node's children always split + 1 */
-        node->count = split + 1;
-        sub_node_update(tree, node, split, l_ch);
-        /* right node's first sub-node */
-        sub_node_update(tree, right, 0, r_ch);
+        /* split key is key[split - 1] */
+        int split_key = key(node)[split - 1];
+        /* left node's children always be [split] */
+        node->count = split;
+        key(right)[0] = key;
+        sub_node_update(tree, right, 0, l_ch);
+        sub_node_update(tree, right, 1, r_ch);
         /* insertion point is split point, replicate from key[split] */
-        for (i = split, j = 0; i < tree->order - 1; i++, j++) {
+        for (i = split, j = 1; i < tree->order - 1; i++, j++) {
                 key(right)[j] = key(node)[i];
                 sub(right)[j + 1] = sub(node)[i + 1];
                 sub_node_flush(tree, right, sub(right)[j + 1], j);
@@ -418,14 +420,15 @@ non_leaf_split_right2(struct bplus_tree *tree, struct bplus_node *node,
                         struct bplus_node *right, struct bplus_node *l_ch,
                         struct bplus_node *r_ch, int key, int insert)
 {
-        int i, j, split_key;
+        int i, j;
         /* split = [m/2] */
         int split = (tree->order + 1) / 2;
-        /* left node's children always split + 1 */
+        /* left node's children always be [split + 1] */
         node->count = split + 1;
         /* split as right sibling */
         right_node_add(tree, node, right);
-        split_key = key(node)[split];
+        /* split key is key[split] */
+        int split_key = key(node)[split];
         /* right node's first sub-node */
         sub(right)[0] = sub(node)[split + 1];
         sub_node_flush(tree, right, sub(right)[0], -1);
