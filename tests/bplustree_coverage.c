@@ -159,7 +159,7 @@ int main(void)
         struct bplus_tree *tree = bplus_tree_init(config.order, config.entries);
 
         exec_file("testcase", tree);
-
+        bplus_tree_get_range(tree, 10000, 100000);
         show_running_info();
         bplus_tree_deinit(tree);
 

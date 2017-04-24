@@ -203,22 +203,25 @@ static int
 non_leaf_split_right1(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
                struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
 {
-        int i, j, split_key = key, order = node->children;
+        int i, j, split_key, order = node->children;
         /* split = [m/2] */
         int split = (order + 1) / 2;
         /* split as right sibling */
         list_add(&right->link, &node->link);
-        /* left node's children always split + 1 */
-        node->children = split + 1;
-        node->sub_ptr[split] = l_ch;
-        node->sub_ptr[split]->parent = node;
-        node->sub_ptr[split]->parent_key_idx = split - 1;
+        /* split key is key[split - 1] */
+        split_key = node->key[split - 1];
+        /* left node's children always be [split] */
+        node->children = split;
         /* right node's first sub-node */
-        right->sub_ptr[0] = r_ch;
+        right->key[0] = key;
+        right->sub_ptr[0] = l_ch;
         right->sub_ptr[0]->parent = right;
         right->sub_ptr[0]->parent_key_idx = -1;
+        right->sub_ptr[1] = r_ch;
+        right->sub_ptr[1]->parent = right;
+        right->sub_ptr[1]->parent_key_idx = 0;
         /* insertion point is split point, replicate from key[split] */
-        for (i = split, j = 0; i < order - 1; i++, j++) {
+        for (i = split, j = 1; i < order - 1; i++, j++) {
                 right->key[j] = node->key[i];
                 right->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                 right->sub_ptr[j + 1]->parent = right;
@@ -235,10 +238,11 @@ non_leaf_split_right2(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
         int i, j, split_key, order = node->children;
         /* split = [m/2] */
         int split = (order + 1) / 2;
-        /* left node's children always split + 1 */
+        /* left node's children always be [split + 1] */
         node->children = split + 1;
         /* split as right sibling */
         list_add(&right->link, &node->link);
+        /* split key is key[split] */
         split_key = node->key[split];
         /* right node's first sub-node */
         right->sub_ptr[0] = node->sub_ptr[split + 1];
