@@ -292,11 +292,11 @@ right_node_add(struct bplus_tree *tree, struct bplus_node *node, struct bplus_no
 }
 
 static int non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
-                struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level);
+                struct bplus_node *l_ch, struct bplus_node *r_ch, int key);
 
 static int
 parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
-                struct bplus_node *r_ch, int key, int level)
+                struct bplus_node *r_ch, int key)
 {
         if (l_ch->parent == INVALID_OFFSET && r_ch->parent == INVALID_OFFSET) {
                 /* new parent */
@@ -323,7 +323,7 @@ parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
                 node_flush(tree, r_ch);
                 /* trace upwards */
                 return non_leaf_insert(tree, node_fetch(tree, l_ch->parent),
-                                        l_ch, r_ch, key, level + 1);
+                                        l_ch, r_ch, key);
         } else {
                 l_ch->parent = r_ch->parent;
                 /* right child cache flush */
@@ -331,7 +331,7 @@ parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
                 node_flush(tree, r_ch);
                 /* trace upwards */
                 return non_leaf_insert(tree, node_fetch(tree, r_ch->parent),
-                                        l_ch, r_ch, key, level + 1);
+                                        l_ch, r_ch, key);
         }
 }
 
@@ -475,7 +475,7 @@ non_leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *node,
 
 static int
 non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
-                struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level)
+                struct bplus_node *l_ch, struct bplus_node *r_ch, int key)
 {
         /* Search key location */
         int insert = key_binary_search(node, key);
@@ -497,9 +497,9 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
                 }
                 /* build new parent */
                 if (insert < split) {
-                        return parent_node_build(tree, sibling, node, split_key, level);
+                        return parent_node_build(tree, sibling, node, split_key);
                 } else {
-                        return parent_node_build(tree, node, sibling, split_key, level);
+                        return parent_node_build(tree, node, sibling, split_key);
                 }
         } else {
                 non_leaf_simple_insert(tree, node, l_ch, r_ch, key, insert);
@@ -615,9 +615,9 @@ leaf_insert(struct bplus_tree *tree, struct bplus_node *leaf, int key, long data
                 }
                 /* build new parent */
                 if (insert < split) {
-                        return parent_node_build(tree, sibling, leaf, key(leaf)[0], 0);
+                        return parent_node_build(tree, sibling, leaf, key(leaf)[0]);
                 } else {
-                        return parent_node_build(tree, leaf, sibling, key(sibling)[0], 0);
+                        return parent_node_build(tree, leaf, sibling, key(sibling)[0]);
                 }
         } else {
                 leaf_simple_insert(tree, leaf, key, data, insert);
