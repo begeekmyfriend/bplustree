@@ -1115,14 +1115,14 @@ hex_to_str(off_t offset, char *buf, int len)
         const static char *hex = "0123456789ABCDEF";
         while (len-- > 0) {
                 buf[len] = hex[offset & 0xf];
-                offset /= 16;
+                offset >>= 4;
         }
 }
 
 static inline off_t
 offset_load(int fd)
 {
-        char buf[8];
+        char buf[16];
         int len = read(fd, buf, sizeof(buf));
         return len > 0 ? str_to_hex(buf, sizeof(buf)) : INVALID_OFFSET;
 }
@@ -1130,7 +1130,7 @@ offset_load(int fd)
 static inline int
 offset_store(int fd, off_t offset)
 {
-        char buf[8];
+        char buf[16];
         hex_to_str(offset, buf, sizeof(buf));
         return write(fd, buf, sizeof(buf));
 }
@@ -1178,7 +1178,6 @@ bplus_tree_init(char *filename, int block_size)
                 tree->block_size = block_size;
                 tree->file_size = 0;
         }
-
         /* set order and entries */
         max_order = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(off_t));
         max_entries = (tree->block_size - sizeof(node)) / (sizeof(int) + sizeof(long));
@@ -1208,14 +1207,14 @@ bplus_tree_deinit(struct bplus_tree *tree)
         struct list_head *pos, *n;
         int fd = open(tree->filename, O_CREAT | O_RDWR, 0644);
         assert(fd >= 0);
-        assert(offset_store(fd, tree->root) == 8);
-        assert(offset_store(fd, tree->block_size) == 8);
-        assert(offset_store(fd, tree->file_size) == 8);
+        assert(offset_store(fd, tree->root) == 16);
+        assert(offset_store(fd, tree->block_size) == 16);
+        assert(offset_store(fd, tree->file_size) == 16);
         /* store free blocks in files for future reuse */
         list_for_each_safe(pos, n, &tree->free_blocks) {
                 list_del(pos);
                 struct free_block *block = list_entry(pos, struct free_block, link);
-                assert(offset_store(fd, block->offset) == 8);
+                assert(offset_store(fd, block->offset) == 16);
                 free(block);
         }
         /* free node caches */
