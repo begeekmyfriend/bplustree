@@ -32,7 +32,7 @@ static unsigned char huge_array[INT_MAX>>3] = { 0 };
 void exec_file(char *file, struct bplus_tree *tree)
 {
         int got = 0, exist = 0;
-        int k1, k2;
+        int k;
         int ret;
         char op;
         FILE *fp = fopen(file,"r");
@@ -42,7 +42,7 @@ void exec_file(char *file, struct bplus_tree *tree)
         }
 
         for (; ;) {
-                ret = fscanf(fp," %c %d", &op, &k1);
+                ret = fscanf(fp," %c %d", &op, &k);
                 if (ret == EOF) {
                         fclose(fp);
                         return;
@@ -60,82 +60,76 @@ void exec_file(char *file, struct bplus_tree *tree)
                 switch(op)
                 {
                 case 'i':
-                        log("i %d ", k1);
-                        if (has(huge_array, k1)) {
+                        log("i %d ", k);
+                        if (has(huge_array, k)) {
                                 exist = 1;
                         } else {
                                 exist = 0;
-                                set(huge_array, k1);
+                                set(huge_array, k);
                         }
-                        if (0 == bplus_tree_put(tree, k1, k1)) {
+                        if (0 == bplus_tree_put(tree, k, k)) {
                                 valid_ins++;
-                                if (k1 == TEST_KEY) {
+                                if (k == TEST_KEY) {
                                         got = 1;
                                 }
                                 if (exist) {
-                                        fprintf(stderr, "insert key %d error, has been inserted before!\n", k1);
+                                        fprintf(stderr, "insert key %d error, has been inserted before!\n", k);
                                         exit(-1);
                                 }
                         } else {
                                 if (!exist) {
-                                        fprintf(stderr, "insert key %d error, could be inserted!\n", k1);
+                                        fprintf(stderr, "insert key %d error, could be inserted!\n", k);
                                         exit(-1);
                                 }
                         }
                         break;
                 case 's':
-                        log("s %d ", k1);
-                        if (has(huge_array, k1)) {
+                        log("s %d ", k);
+                        if (has(huge_array, k)) {
                                 exist = 1;
                         } else {
                                 exist = 0;
                         }
-                        ret = bplus_tree_get(tree, k1);
+                        ret = bplus_tree_get(tree, k);
                         if (ret != -1) {
                                 valid_query++;
                                 if (!exist) {
-                                        fprintf(stderr, "search key %d error, found but not exists!\n", k1);
+                                        fprintf(stderr, "search key %d error, found but not exists!\n", k);
                                         exit(-1);
                                 }
-                                assert(ret == k1);
+                                assert(ret == k);
                         }
                         else {
                                 if (exist) {
-                                        fprintf(stderr, "search key %d error, exists but not found!\n", k1);
-                                        exit(-1);
-                                }
-                        }
-                        break;
-                case 'd':
-                        log("d %d ", k1);
-                        if (has(huge_array, k1)) {
-                                exist = 1;
-                                unset(huge_array, k1);
-                        } else {
-                                exist = 0;
-                        }
-                        if (0 == bplus_tree_put(tree, k1, 0))
-                        {
-                                valid_del++;
-                                if (k1 == TEST_KEY && got) {
-                                        got = 0;
-                                }
-                                if (!exist) {
-                                        fprintf(stderr, "delete key %d error, deleted but not found!\n", k1);
-                                        exit(-1);
-                                }
-                        } else {
-                                if (exist) {
-                                        fprintf(stderr, "delete key %d error, found but not deleted!\n", k1);
+                                        fprintf(stderr, "search key %d error, exists but not found!\n", k);
                                         exit(-1);
                                 }
                         }
                         break;
                 case 'r':
-                        log("r %d", k2);
-                        ret = fscanf(fp,"%d",&k2);
-                        //bplus_tree_get_range(tree,k1,k2);
-                        //valid_query++;
+                        log("d %d ", k);
+                        if (has(huge_array, k)) {
+                                exist = 1;
+                                unset(huge_array, k);
+                        } else {
+                                exist = 0;
+                        }
+                        if (0 == bplus_tree_put(tree, k, 0))
+                        {
+                                valid_del++;
+                                if (k == TEST_KEY && got) {
+                                        got = 0;
+                                }
+                                if (!exist) {
+                                        fprintf(stderr, "delete key %d error, deleted but not found!\n", k);
+                                        exit(-1);
+                                }
+                        } else {
+                                if (exist) {
+                                        fprintf(stderr, "delete key %d error, found but not deleted!\n", k);
+                                        exit(-1);
+                                }
+                        }
                         break;
                 case 'q':
                         fclose(fp);

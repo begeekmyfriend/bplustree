@@ -20,14 +20,12 @@ def generate_normal_data(file_name,max_key,total):
 
 def get_operation():
 	seed=random.random()
-	if (0<=seed<0.2):
+	if (0<=seed<0.3):
 		operation='i'
-	elif(0.2<=seed<0.4):
-		operation='d'
-	elif(0.4<=seed<0.6):
-		operation='s'
-	else:
+	elif(0.3<=seed<0.6):
 		operation='r'
+	else:
+		operation='s'
 	return operation
 
 def generate_opeartion(file_name,max_key,total):
@@ -52,6 +50,6 @@ def generate_opeartion(file_name,max_key,total):
 
 # create single test case !!
 generate_normal_data("./testcase",0xfffff,1e+6)
-generate_opeartion("./testcase",0xfffff,4e+6)
+generate_opeartion("./testcase",0xfffff,2e+6)
 
 #os.system('pause')
