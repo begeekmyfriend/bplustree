@@ -111,7 +111,7 @@ void exec_file(char *file, struct bplus_tree *tree)
                                 }
                         }
                         break;
-                case 'd':
+                case 'r':
                         log("d %d ", k1);
                         if (has(huge_array, k1)) {
                                 exist = 1;
@@ -135,12 +135,6 @@ void exec_file(char *file, struct bplus_tree *tree)
                                         exit(-1);
                                 }
                         }
-                        break;
-                case 'r':
-                        log("r %d", k2);
-                        ret = fscanf(fp,"%d",&k2);
-                        //bplus_tree_get_range(tree,k1,k2);
-                        //valid_query++;
                         break;
                 case 'q':
                         fclose(fp);
