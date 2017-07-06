@@ -651,7 +651,7 @@ bplus_tree_insert(struct bplus_tree *tree, int key, long data)
         data(root)[0] = data;
         root->count = 1;
         tree->root = new_node_write(tree, root);
-        node_release(tree, root);
+        cache_defer(tree, root);
         return 0;
 }
 
