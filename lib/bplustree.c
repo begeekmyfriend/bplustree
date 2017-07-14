@@ -345,8 +345,8 @@ non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *node,
         int split = (tree->order + 1) / 2;
         /* split as left sibling */
         left_node_add(tree, node, left);
-        /* replicate from sub[0] to sub[split - 1] */
-        for (i = 0, j = 0; i < split; i++, j++) {
+        /* replicate from sub[0] to sub[split - 2] */
+        for (i = 0, j = 0; i < split - 1; i++, j++) {
                 if (j == insert) {
                         sub_node_update(tree, left, j, l_ch);
                         sub_node_update(tree, left, j + 1, r_ch);
@@ -367,7 +367,6 @@ non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *node,
                 }
         }
         if (insert == split - 1) {
-                key(left)[insert] = key;
                 sub_node_update(tree, left, insert, l_ch);
                 sub_node_update(tree, node, 0, r_ch);
                 split_key = key;
@@ -382,8 +381,6 @@ non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *node,
                 sub(node)[j + 1] = sub(node)[i + 1];
                 sub_node_flush(tree, node, sub(node)[j + 1], j);
         }
-        sub(node)[j] = sub(node)[i];
-        sub_node_flush(tree, node, sub(node)[j], j - 1);
         node->count = j + 1;
         return split_key;
 }
