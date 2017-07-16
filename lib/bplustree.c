@@ -314,7 +314,7 @@ parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
                 /* release parent, left and right child */
                 node_release(tree, l_ch);
                 node_release(tree, r_ch);
-                node_release(tree, parent);
+                cache_defer(tree, parent);
                 return 0;
         } else if (r_ch->parent == INVALID_OFFSET) {
                 r_ch->parent = l_ch->parent;
