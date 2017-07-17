@@ -86,7 +86,8 @@ typedef struct bplus_node {
         int type;
         int parent_key_idx;
         int count;
-        int reserve;
+        /* used in bplus_tree_dump, mark the node has been already pushed. */
+        int pushed;
 } bplus_node;
 /*
 struct bplus_non_leaf {
