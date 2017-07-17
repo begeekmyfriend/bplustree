@@ -137,6 +137,20 @@ node_fetch(struct bplus_tree *tree, off_t offset)
 }
 
 static struct bplus_node *
+node_alloc(struct bplus_tree *tree, off_t offset)
+{
+        if (offset == INVALID_OFFSET) {
+                return NULL;
+        }
+
+        struct bplus_node *node = calloc(1, sizeof(char) * tree->block_size);
+        assert(node != NULL);
+        int len = pread(tree->fd, node, tree->block_size, offset);
+        assert(len == tree->block_size);
+        return node;
+}
+
+static struct bplus_node *
 node_seek(struct bplus_tree *tree, off_t offset)
 {
         if (offset == INVALID_OFFSET) {
@@ -1229,32 +1243,28 @@ bplus_tree_deinit(struct bplus_tree *tree)
 
 #define MAX_LEVEL 10
 
-struct node_backlog {
-        /* Node backlogged */
-        off_t offset;
-        /* The index next to the backtrack point, must be >= 1 */
-        int next_sub_idx;
-};
-
 static inline void
-nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
+node_push(struct bplus_node *node, int *top, struct bplus_node **bottom)
 {
-        if (*top - *buttom < MAX_LEVEL) {
-                (*(*top)++) = *nbl;
+        if (*top < MAX_LEVEL) {
+                bottom[(*top)++] = node;
         }
 }
 
-static inline struct node_backlog *
-nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
+static inline struct bplus_node *
+node_pop(int *top, struct bplus_node **bottom)
 {
-        return *top - *buttom > 0 ? --*top : NULL;
+        return *top > 0 ? bottom[--*top] : NULL;
 }
 
 static inline int
-children(struct bplus_node *node)
+last_child(struct bplus_node *node, struct bplus_node *parent)
 {
-        assert(!is_leaf(node));
-        return node->count;
+        if (parent == NULL)
+                return 1;
+
+        assert(node->parent == parent->self);
+        return node->parent_key_idx + 2 == parent->count;
 }
 
 static void
@@ -1276,14 +1286,14 @@ node_key_dump(struct bplus_node *node)
 }
 
 static void
-draw(struct bplus_tree *tree, struct bplus_node *node, struct node_backlog *stack, int level)
+draw(struct bplus_tree *tree, struct bplus_node *node, struct bplus_node **stack, int level)
 {
         int i;
         for (i = 1; i < level; i++) {
                 if (i == level - 1) {
                         printf("%-8s", "+-------");
                 } else {
-                        if (stack[i - 1].offset != INVALID_OFFSET) {
+                        if (stack[i]->next != INVALID_OFFSET) {
                                 printf("%-8s", "|");
                         } else {
                                 printf("%-8s", " ");
@@ -1297,46 +1307,48 @@ void
 bplus_tree_dump(struct bplus_tree *tree)
 {
         int level = 0;
-        struct bplus_node *node = node_seek(tree, tree->root);
-        struct node_backlog nbl, *p_nbl = NULL;
-        struct node_backlog *top, *buttom, nbl_stack[MAX_LEVEL];
-
-        top = buttom = nbl_stack;
+        struct bplus_node *node = node_alloc(tree, tree->root);
+        struct bplus_node *tmp, *parent;
+        struct bplus_node *node_stack[MAX_LEVEL] = {0};
 
         for (; ;) {
                 if (node != NULL) {
-                        /* Fetch the pop-up backlogged node's sub-id.
-                         * If not backlogged, fetch the first sub-id. */
-                        int sub_idx = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
-                        /* Reset backlog for the node has gone deep down */
-                        p_nbl = NULL;
+                        int sib_off;
 
-                        /* Backlog the node */
-                        if (is_leaf(node) || sub_idx + 1 >= children(node)) {
-                                nbl.offset = INVALID_OFFSET;
-                                nbl.next_sub_idx = 0;
-                        } else {
-                                nbl.offset = node->self;
-                                nbl.next_sub_idx = sub_idx + 1;
-                        }
-                        nbl_push(&nbl, &top, &buttom);
-                        level++;
+                        if (node->pushed == 1) {
+                                /* get the sibling node, free the node already been dumped. */
+                                tmp = node;
+                                sib_off = node->next;
+                                node = node_alloc(tree, sib_off);
 
-                        /* Draw lines as long as sub_idx is the first one */
-                        if (sub_idx == 0) {
-                                draw(tree, node, nbl_stack, level);
+                                free(tmp);
+                                tmp = NULL;
                         }
 
-                        /* Move deep down */
-                        node = is_leaf(node) ? NULL : node_seek(tree, sub(node)[sub_idx]);
+                        node->pushed = 1;
+                        parent = level > 0 ? node_stack[level - 1] : NULL;
+                        if (last_child(node, parent)) {
+                                /* break the ordinary bplustree node chain,
+                                 * we only need the chain in a parent node.*/
+                                node->next = INVALID_OFFSET;
+                        }
+                        node_push(node, &level, node_stack);
+                        draw(tree, node, node_stack, level);
+
+                        /* Move deep down, always get the first sibling node for traverse */
+                        node = is_leaf(node) ? NULL : node_alloc(tree, sub(node)[0]);
                 } else {
-                        p_nbl = nbl_pop(&top, &buttom);
-                        if (p_nbl == NULL) {
+                        node = node_pop(&level, node_stack);
+                        if (node == NULL) {
                                 /* End of traversal */
                                 break;
                         }
-                        node = node_seek(tree, p_nbl->offset);
-                        level--;
+
+                        parent = level > 0 ? node_stack[level - 1] : NULL;
+                        if (last_child(node, parent)) {
+                                free(node);
+                                node = NULL;
+                        }
                 }
         }
 }
