@@ -633,12 +633,12 @@ bplus_tree_insert(struct bplus_tree *tree, int key, long data)
                         return leaf_insert(tree, node, key, data);
                 } else {
                         int i = key_binary_search(node, key);
-                        if (i >= 0) {
-                                node = node_seek(tree, sub(node)[i + 1]);
-                        } else {
+                        if (i < 0) {
                                 i = -i - 1;
                                 node = node_seek(tree, sub(node)[i]);
+                                continue;
                         }
+                        return -1;
                 }
         }
 
