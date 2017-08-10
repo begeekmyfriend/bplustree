@@ -87,7 +87,7 @@ typedef struct bplus_node {
         int parent_key_idx;
         /* If leaf node, it specifies  count of entries,
          * if non-leaf node, it specifies count of children(branches) */
-        int count;
+        int children;
         int reserve;
 } bplus_node;
 /*
