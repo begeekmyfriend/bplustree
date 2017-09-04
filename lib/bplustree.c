@@ -1119,15 +1119,15 @@ hex_to_str(off_t offset, char *buf, int len)
 static inline off_t
 offset_load(int fd)
 {
-        char buf[16];
-        int len = read(fd, buf, sizeof(buf));
+        char buf[2 * sizeof(off_t)];
+        ssize_t len = read(fd, buf, sizeof(buf));
         return len > 0 ? str_to_hex(buf, sizeof(buf)) : INVALID_OFFSET;
 }
 
-static inline int
+static inline ssize_t
 offset_store(int fd, off_t offset)
 {
-        char buf[16];
+        char buf[2 * sizeof(off_t)];
         hex_to_str(offset, buf, sizeof(buf));
         return write(fd, buf, sizeof(buf));
 }

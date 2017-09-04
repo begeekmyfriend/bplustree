@@ -47,7 +47,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         }
 
         again = 1;
-        printf("Set index file block size (bytes, power of 2, e.g. 128): ");
+        printf("Set index file block size (bytes, power of 2, e.g. 4096): ");
         while (again) {
                 switch (i = getchar()) {
                 case EOF:
@@ -55,7 +55,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 case 'q':
                         return -1;
                 case '\n':
-                        config->block_size = 128;
+                        config->block_size = 4096;
                         again = 0;
                         break;
                 default:
