@@ -13,7 +13,7 @@ Demo
 Code Coverage Test
 ------------------
 
-Note: Do NOT load an existed index file for this testing!
+**Note:** Do NOT load an existing index file with same name for this testing!
 
 ```shell
 ./coverage_build.sh
