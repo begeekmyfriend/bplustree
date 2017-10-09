@@ -10,15 +10,10 @@ Demo
 ./demo_build.sh
 ```
 
-General Test
-------------
-
-```shell
-./test_build.sh
-```
-
 Code Coverage Test
 ------------------
+
+Note: Do NOT load an existed index file for this testing!
 
 ```shell
 ./coverage_build.sh
