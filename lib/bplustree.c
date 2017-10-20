@@ -19,14 +19,12 @@ enum {
         RIGHT_SIBLING = 1,
 };
 
-static inline int
-is_leaf(struct bplus_node *node)
+static inline int is_leaf(struct bplus_node *node)
 {
         return node->type == BPLUS_TREE_LEAF;
 }
 
-static int
-key_binary_search(int *arr, int len, int target)
+static int key_binary_search(int *arr, int len, int target)
 {
         int low = -1;
         int high = len;
@@ -45,8 +43,7 @@ key_binary_search(int *arr, int len, int target)
         }
 }
 
-static struct bplus_non_leaf *
-non_leaf_new(void)
+static struct bplus_non_leaf *non_leaf_new(void)
 {
         struct bplus_non_leaf *node = calloc(1, sizeof(*node));
         assert(node != NULL);
@@ -56,8 +53,7 @@ non_leaf_new(void)
         return node;
 }
 
-static struct bplus_leaf *
-leaf_new(void)
+static struct bplus_leaf *leaf_new(void)
 {
         struct bplus_leaf *node = calloc(1, sizeof(*node));
         assert(node != NULL);
@@ -67,22 +63,19 @@ leaf_new(void)
         return node;
 }
 
-static void
-non_leaf_delete(struct bplus_non_leaf *node)
+static void non_leaf_delete(struct bplus_non_leaf *node)
 {
         list_del(&node->link);
         free(node);
 }
 
-static void
-leaf_delete(struct bplus_leaf *node)
+static void leaf_delete(struct bplus_leaf *node)
 {
         list_del(&node->link);
         free(node);
 }
 
-static int
-bplus_tree_search(struct bplus_tree *tree, int key)
+static int bplus_tree_search(struct bplus_tree *tree, int key)
 {
         int i, ret = -1;
         struct bplus_node *node = tree->root;
@@ -109,9 +102,8 @@ bplus_tree_search(struct bplus_tree *tree, int key)
 static int non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
                 struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level);
 
-static int
-parent_node_build(struct bplus_tree *tree, struct bplus_node *left,
-                struct bplus_node *right, int key, int level)
+static int parent_node_build(struct bplus_tree *tree, struct bplus_node *left,
+                             struct bplus_node *right, int key, int level)
 {
         if (left->parent == NULL && right->parent == NULL) {
                 /* new parent */
@@ -139,9 +131,8 @@ parent_node_build(struct bplus_tree *tree, struct bplus_node *left,
         }
 }
 
-static int
-non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
-               struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
+static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
+                               struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
 {
         int i, j, split_key, order = node->children;
         /* split = [m/2] */
@@ -199,9 +190,8 @@ non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
         return split_key;
 }
 
-static int
-non_leaf_split_right1(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
-               struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
+static int non_leaf_split_right1(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
+                                 struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
 {
         int i, j, split_key, order = node->children;
         /* split = [m/2] */
@@ -231,9 +221,8 @@ non_leaf_split_right1(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
         return split_key;
 }
 
-static int
-non_leaf_split_right2(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
-               struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
+static int non_leaf_split_right2(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
+                                 struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int insert)
 {
         int i, j, split_key, order = node->children;
         /* split = [m/2] */
@@ -277,9 +266,8 @@ non_leaf_split_right2(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
         return split_key;
 }
 
-static void
-non_leaf_simple_insert(struct bplus_non_leaf *node, struct bplus_node *l_ch,
-                struct bplus_node *r_ch, int key, int insert)
+static void non_leaf_simple_insert(struct bplus_non_leaf *node, struct bplus_node *l_ch,
+                                   struct bplus_node *r_ch, int key, int insert)
 {
         int i;
         for (i = node->children - 1; i > insert; i--) {
@@ -295,9 +283,8 @@ non_leaf_simple_insert(struct bplus_non_leaf *node, struct bplus_node *l_ch,
         node->children++;
 }
 
-static int
-non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
-                struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level)
+static int non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
+                           struct bplus_node *l_ch, struct bplus_node *r_ch, int key, int level)
 {
         /* search key location */
         int insert = key_binary_search(node->key, node->children - 1, key);
@@ -332,9 +319,8 @@ non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
         return 0;
 }
 
-static void
-leaf_split_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
-                int key, int data, int insert)
+static void leaf_split_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
+                            int key, int data, int insert)
 {
         int i, j;
         /* split = [m/2] */
@@ -366,9 +352,8 @@ leaf_split_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
         leaf->entries = j;
 }
 
-static void
-leaf_split_right(struct bplus_leaf *leaf, struct bplus_leaf *right,
-                int key, int data, int insert)
+static void leaf_split_right(struct bplus_leaf *leaf, struct bplus_leaf *right,
+                             int key, int data, int insert)
 {
         int i, j;
         /* split = [m/2] */
@@ -398,8 +383,7 @@ leaf_split_right(struct bplus_leaf *leaf, struct bplus_leaf *right,
         leaf->entries = split;
 }
 
-static void
-leaf_simple_insert(struct bplus_leaf *leaf, int key, int data, int insert)
+static void leaf_simple_insert(struct bplus_leaf *leaf, int key, int data, int insert)
 {
         int i;
         for (i = leaf->entries; i > insert; i--) {
@@ -411,8 +395,7 @@ leaf_simple_insert(struct bplus_leaf *leaf, int key, int data, int insert)
         leaf->entries++;
 }
 
-static int
-leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
+static int leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
 {
         /* search key location */
         int insert = key_binary_search(leaf->key, leaf->entries, key);
@@ -449,8 +432,7 @@ leaf_insert(struct bplus_tree *tree, struct bplus_leaf *leaf, int key, int data)
         return 0;
 }
 
-static int
-bplus_tree_insert(struct bplus_tree *tree, int key, int data)
+static int bplus_tree_insert(struct bplus_tree *tree, int key, int data)
 {
         struct bplus_node *node = tree->root;
         while (node != NULL) {
@@ -479,9 +461,8 @@ bplus_tree_insert(struct bplus_tree *tree, int key, int data)
         return 0;
 }
 
-static int
-non_leaf_sibling_select(struct bplus_non_leaf *l_sib, struct bplus_non_leaf *r_sib,
-                        struct bplus_non_leaf *parent, int i)
+static int non_leaf_sibling_select(struct bplus_non_leaf *l_sib, struct bplus_non_leaf *r_sib,
+                                   struct bplus_non_leaf *parent, int i)
 {
         if (i == -1) {
                 /* the frist sub-node, no left sibling, choose the right one */
@@ -495,9 +476,8 @@ non_leaf_sibling_select(struct bplus_non_leaf *l_sib, struct bplus_non_leaf *r_s
         }
 }
 
-static void
-non_leaf_shift_from_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
-                        int parent_key_index, int remove)
+static void non_leaf_shift_from_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
+                                     int parent_key_index, int remove)
 {
         int i;
         /* node's elements right shift */
@@ -518,9 +498,8 @@ non_leaf_shift_from_left(struct bplus_non_leaf *node, struct bplus_non_leaf *lef
         left->children--;
 }
 
-static void
-non_leaf_merge_into_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
-                        int parent_key_index, int remove)
+static void non_leaf_merge_into_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
+                                     int parent_key_index, int remove)
 {
         int i, j;
         /* move parent key down */
@@ -545,9 +524,8 @@ non_leaf_merge_into_left(struct bplus_non_leaf *node, struct bplus_non_leaf *lef
         non_leaf_delete(node);
 }
 
-static void
-non_leaf_shift_from_right(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
-                        int parent_key_index)
+static void non_leaf_shift_from_right(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
+                                      int parent_key_index)
 {
         int i;
         /* parent key left rotation */
@@ -569,9 +547,8 @@ non_leaf_shift_from_right(struct bplus_non_leaf *node, struct bplus_non_leaf *ri
         right->children--;
 }
 
-static void
-non_leaf_merge_from_right(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
-                        int parent_key_index)
+static void non_leaf_merge_from_right(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
+                                      int parent_key_index)
 {
         int i, j;
         /* move parent key down */
@@ -591,8 +568,7 @@ non_leaf_merge_from_right(struct bplus_non_leaf *node, struct bplus_non_leaf *ri
         non_leaf_delete(right);
 }
 
-static void
-non_leaf_simple_remove(struct bplus_non_leaf *node, int remove)
+static void non_leaf_simple_remove(struct bplus_non_leaf *node, int remove)
 {
         assert(node->children >= 2);
         for (; remove < node->children - 2; remove++) {
@@ -603,8 +579,7 @@ non_leaf_simple_remove(struct bplus_non_leaf *node, int remove)
         node->children--;
 }
 
-static void
-non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove)
+static void non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove)
 {
         if (node->children <= (tree->order + 1) / 2) {
                 struct bplus_non_leaf *l_sib = list_prev_entry(node, link);
@@ -649,9 +624,8 @@ non_leaf_remove(struct bplus_tree *tree, struct bplus_non_leaf *node, int remove
         }
 }
 
-static int
-leaf_sibling_select(struct bplus_leaf *l_sib, struct bplus_leaf *r_sib,
-                        struct bplus_non_leaf *parent, int i)
+static int leaf_sibling_select(struct bplus_leaf *l_sib, struct bplus_leaf *r_sib,
+                               struct bplus_non_leaf *parent, int i)
 {
         if (i == -1) {
                 /* the frist sub-node, no left sibling, choose the right one */
@@ -665,9 +639,8 @@ leaf_sibling_select(struct bplus_leaf *l_sib, struct bplus_leaf *r_sib,
         }
 }
 
-static void
-leaf_shift_from_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
-                        int parent_key_index, int remove)
+static void leaf_shift_from_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
+                                 int parent_key_index, int remove)
 {
         /* right shift in leaf node */
         for (; remove > 0; remove--) {
@@ -682,9 +655,7 @@ leaf_shift_from_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
         leaf->parent->key[parent_key_index] = leaf->key[0];
 }
 
-static void
-leaf_merge_into_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
-                        int remove)
+static void leaf_merge_into_left(struct bplus_leaf *leaf, struct bplus_leaf *left, int remove)
 {
         int i, j;
         /* merge into left sibling */
@@ -700,9 +671,7 @@ leaf_merge_into_left(struct bplus_leaf *leaf, struct bplus_leaf *left,
         leaf_delete(leaf);
 }
 
-static void
-leaf_shift_from_right(struct bplus_leaf *leaf, struct bplus_leaf *right,
-                        int parent_key_index)
+static void leaf_shift_from_right(struct bplus_leaf *leaf, struct bplus_leaf *right, int parent_key_index)
 {
         int i;
         /* borrow the first element from right sibling */
@@ -719,8 +688,7 @@ leaf_shift_from_right(struct bplus_leaf *leaf, struct bplus_leaf *right,
         leaf->parent->key[parent_key_index] = right->key[0];
 }
 
-static void
-leaf_merge_from_right(struct bplus_leaf *leaf, struct bplus_leaf *right)
+static void leaf_merge_from_right(struct bplus_leaf *leaf, struct bplus_leaf *right)
 {
         int i, j;
         /* merge from right sibling */
@@ -733,8 +701,7 @@ leaf_merge_from_right(struct bplus_leaf *leaf, struct bplus_leaf *right)
         leaf_delete(right);
 }
 
-static void
-leaf_simple_remove(struct bplus_leaf *leaf, int remove)
+static void leaf_simple_remove(struct bplus_leaf *leaf, int remove)
 {
         for (; remove < leaf->entries - 1; remove++) {
                 leaf->key[remove] = leaf->key[remove + 1];
@@ -743,8 +710,7 @@ leaf_simple_remove(struct bplus_leaf *leaf, int remove)
         leaf->entries--;
 }
 
-static int
-leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
+static int leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
 {
         int remove = key_binary_search(leaf->key, leaf->entries, key);
         if (remove < 0) {
@@ -796,8 +762,7 @@ leaf_remove(struct bplus_tree *tree, struct bplus_leaf *leaf, int key)
         return 0;
 }
 
-static int
-bplus_tree_delete(struct bplus_tree *tree, int key)
+static int bplus_tree_delete(struct bplus_tree *tree, int key)
 {
         struct bplus_node *node = tree->root;
         while (node != NULL) {
@@ -818,8 +783,7 @@ bplus_tree_delete(struct bplus_tree *tree, int key)
         return -1;
 }
 
-int
-bplus_tree_get(struct bplus_tree *tree, int key)
+int bplus_tree_get(struct bplus_tree *tree, int key)
 {
         int data = bplus_tree_search(tree, key); 
         if (data) {
@@ -829,8 +793,7 @@ bplus_tree_get(struct bplus_tree *tree, int key)
         }
 }
 
-int
-bplus_tree_put(struct bplus_tree *tree, int key, int data)
+int bplus_tree_put(struct bplus_tree *tree, int key, int data)
 {
         if (data) {
                 return bplus_tree_insert(tree, key, data);
@@ -839,8 +802,7 @@ bplus_tree_put(struct bplus_tree *tree, int key, int data)
         }
 }
 
-struct bplus_tree *
-bplus_tree_init(int order, int entries)
+struct bplus_tree *bplus_tree_init(int order, int entries)
 {
         /* The max order of non leaf nodes must be more than two */
         assert(BPLUS_MAX_ORDER > BPLUS_MIN_ORDER);
@@ -860,14 +822,12 @@ bplus_tree_init(int order, int entries)
         return tree;
 }
 
-void
-bplus_tree_deinit(struct bplus_tree *tree)
+void bplus_tree_deinit(struct bplus_tree *tree)
 {
         free(tree);
 }
 
-int
-bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
+int bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2)
 {
     int i, data = 0;
     int min = key1 <= key2 ? key1 : key2;
@@ -915,28 +875,24 @@ struct node_backlog {
         int next_sub_idx;
 };
 
-static inline void
-nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
+static inline void nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
 {
         if (*top - *buttom < BPLUS_MAX_LEVEL) {
                 (*(*top)++) = *nbl;
         }
 }
 
-static inline struct node_backlog *
-nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
+static inline struct node_backlog *nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
 {
         return *top - *buttom > 0 ? --*top : NULL;
 }
 
-static inline int
-children(struct bplus_node *node)
+static inline int children(struct bplus_node *node)
 {
         return ((struct bplus_non_leaf *) node)->children;
 }
 
-static void
-node_key_dump(struct bplus_node *node)
+static void node_key_dump(struct bplus_node *node)
 {
         int i;
         if (is_leaf(node)) {
@@ -951,8 +907,8 @@ node_key_dump(struct bplus_node *node)
         printf("\n");
 }
 
-static int
-node_key(struct bplus_node *node, int i) {
+static int node_key(struct bplus_node *node, int i)
+{
         if (is_leaf(node)) {
                 return ((struct bplus_leaf *)node)->key[i];
         } else {
@@ -960,8 +916,7 @@ node_key(struct bplus_node *node, int i) {
         }
 }
 
-static void
-key_print(struct bplus_node *node)
+static void key_print(struct bplus_node *node)
 {
         int i;
         if (is_leaf(node)) {
@@ -980,8 +935,7 @@ key_print(struct bplus_node *node)
         printf("\n");
 }
 
-void
-bplus_tree_dump(struct bplus_tree *tree)
+void bplus_tree_dump(struct bplus_tree *tree)
 {
         int level = 0;
         struct bplus_node *node = tree->root;
@@ -992,13 +946,12 @@ bplus_tree_dump(struct bplus_tree *tree)
 
         for (; ;) {
                 if (node != NULL) {
-                        /* Fetch the pop-up backlogged node's sub-id.
-                         * If not backlogged, fetch the first sub-id. */
+                        /* non-zero needs backward and zero does not */
                         int sub_idx = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
-                        /* Reset backlog for the node has gone deep down */
+                        /* Reset each loop */
                         p_nbl = NULL;
 
-                        /* Backlog the node */
+                        /* Backlog the path */
                         if (is_leaf(node) || sub_idx + 1 >= children(node)) {
                                 nbl.node = NULL;
                                 nbl.next_sub_idx = 0;
@@ -1009,7 +962,7 @@ bplus_tree_dump(struct bplus_tree *tree)
                         nbl_push(&nbl, &top, &buttom);
                         level++;
 
-                        /* Draw lines as long as sub_idx is the first one */
+                        /* Draw the whole node when the first entry is passed through */
                         if (sub_idx == 0) {
                                 int i;
                                 for (i = 1; i < level; i++) {
