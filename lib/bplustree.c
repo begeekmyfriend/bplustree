@@ -1182,18 +1182,6 @@ struct node_backlog {
         int next_sub_idx;
 };
 
-static inline void nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
-{
-        if (*top - *buttom < MAX_LEVEL) {
-                (*(*top)++) = *nbl;
-        }
-}
-
-static inline struct node_backlog *nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
-{
-        return *top - *buttom > 0 ? --*top : NULL;
-}
-
 static inline int children(struct bplus_node *node)
 {
         assert(!is_leaf(node));
@@ -1238,10 +1226,9 @@ void bplus_tree_dump(struct bplus_tree *tree)
 {
         int level = 0;
         struct bplus_node *node = node_seek(tree, tree->root);
-        struct node_backlog nbl, *p_nbl = NULL;
-        struct node_backlog *top, *buttom, nbl_stack[MAX_LEVEL];
-
-        top = buttom = nbl_stack;
+        struct node_backlog *p_nbl = NULL;
+        struct node_backlog nbl_stack[MAX_LEVEL];
+        struct node_backlog *top = nbl_stack;
 
         for (; ;) {
                 if (node != NULL) {
@@ -1252,13 +1239,13 @@ void bplus_tree_dump(struct bplus_tree *tree)
 
                         /* Backlog the node */
                         if (is_leaf(node) || sub_idx + 1 >= children(node)) {
-                                nbl.offset = INVALID_OFFSET;
-                                nbl.next_sub_idx = 0;
+                                top->offset = INVALID_OFFSET;
+                                top->next_sub_idx = 0;
                         } else {
-                                nbl.offset = node->self;
-                                nbl.next_sub_idx = sub_idx + 1;
+                                top->offset = node->self;
+                                top->next_sub_idx = sub_idx + 1;
                         }
-                        nbl_push(&nbl, &top, &buttom);
+                        top++;
                         level++;
 
                         /* Draw the node when first passed through */
@@ -1269,7 +1256,7 @@ void bplus_tree_dump(struct bplus_tree *tree)
                         /* Move deep down */
                         node = is_leaf(node) ? NULL : node_seek(tree, sub(node)[sub_idx]);
                 } else {
-                        p_nbl = nbl_pop(&top, &buttom);
+                        p_nbl = top == nbl_stack ? NULL : --top;
                         if (p_nbl == NULL) {
                                 /* End of traversal */
                                 break;
