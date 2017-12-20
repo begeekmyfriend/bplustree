@@ -875,18 +875,6 @@ struct node_backlog {
         int next_sub_idx;
 };
 
-static inline void nbl_push(struct node_backlog *nbl, struct node_backlog **top, struct node_backlog **buttom)
-{
-        if (*top - *buttom < BPLUS_MAX_LEVEL) {
-                (*(*top)++) = *nbl;
-        }
-}
-
-static inline struct node_backlog *nbl_pop(struct node_backlog **top, struct node_backlog **buttom)
-{
-        return *top - *buttom > 0 ? --*top : NULL;
-}
-
 static inline int children(struct bplus_node *node)
 {
         return ((struct bplus_non_leaf *) node)->children;
@@ -939,10 +927,9 @@ void bplus_tree_dump(struct bplus_tree *tree)
 {
         int level = 0;
         struct bplus_node *node = tree->root;
-        struct node_backlog nbl, *p_nbl = NULL;
-        struct node_backlog *top, *buttom, nbl_stack[BPLUS_MAX_LEVEL];
-
-        top = buttom = nbl_stack;
+        struct node_backlog *p_nbl = NULL;
+        struct node_backlog nbl_stack[BPLUS_MAX_LEVEL];
+        struct node_backlog *top = nbl_stack;
 
         for (; ;) {
                 if (node != NULL) {
@@ -953,13 +940,13 @@ void bplus_tree_dump(struct bplus_tree *tree)
 
                         /* Backlog the path */
                         if (is_leaf(node) || sub_idx + 1 >= children(node)) {
-                                nbl.node = NULL;
-                                nbl.next_sub_idx = 0;
+                                top->node = NULL;
+                                top->next_sub_idx = 0;
                         } else {
-                                nbl.node = node;
-                                nbl.next_sub_idx = sub_idx + 1;
+                                top->node = node;
+                                top->next_sub_idx = sub_idx + 1;
                         }
-                        nbl_push(&nbl, &top, &buttom);
+                        top++;
                         level++;
 
                         /* Draw the whole node when the first entry is passed through */
@@ -982,7 +969,7 @@ void bplus_tree_dump(struct bplus_tree *tree)
                         /* Move deep down */
                         node = is_leaf(node) ? NULL : ((struct bplus_non_leaf *) node)->sub_ptr[sub_idx];
                 } else {
-                        p_nbl = nbl_pop(&top, &buttom);
+                        p_nbl = top == nbl_stack ? NULL : --top;
                         if (p_nbl == NULL) {
                                 /* End of traversal */
                                 break;
