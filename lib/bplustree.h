@@ -103,7 +103,7 @@ struct bplus_non_leaf {
         int parent_key_idx;
         int children;
         int reserve;
-        int key[BPLUS_MAX_ORDER - 1];
+        key_t key[BPLUS_MAX_ORDER - 1];
         off_t sub_ptr[BPLUS_MAX_ORDER];
 };
 
@@ -117,7 +117,7 @@ struct bplus_leaf {
         int parent_key_idx;
         int entries;
         int reserve;
-        int key[BPLUS_MAX_ENTRIES];
+        key_t key[BPLUS_MAX_ENTRIES];
         long data[BPLUS_MAX_ENTRIES];
 };
 */
@@ -135,9 +135,9 @@ struct bplus_tree {
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);
-long bplus_tree_get(struct bplus_tree *tree, int key);
-int bplus_tree_put(struct bplus_tree *tree, int key, long data);
-long bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2);
+long bplus_tree_get(struct bplus_tree *tree, key_t key);
+int bplus_tree_put(struct bplus_tree *tree, key_t key, long data);
+long bplus_tree_get_range(struct bplus_tree *tree, key_t key1, key_t key2);
 struct bplus_tree *bplus_tree_init(char *filename, int block_size);
 void bplus_tree_deinit(struct bplus_tree *tree);
 int bplus_open(char *filename);
