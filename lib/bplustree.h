@@ -10,6 +10,8 @@
 #define BPLUS_MAX_ENTRIES   64
 #define BPLUS_MAX_LEVEL     10
 
+typedef int key_t;
+
 struct list_head {
         struct list_head *prev, *next;
 };
@@ -107,9 +109,9 @@ struct bplus_tree {
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);
-int bplus_tree_get(struct bplus_tree *tree, int key);
-int bplus_tree_put(struct bplus_tree *tree, int key, int data);
-int bplus_tree_get_range(struct bplus_tree *tree, int key1, int key2);
+int bplus_tree_get(struct bplus_tree *tree, key_t key);
+int bplus_tree_put(struct bplus_tree *tree, key_t key, int data);
+int bplus_tree_get_range(struct bplus_tree *tree, key_t key1, key_t key2);
 struct bplus_tree *bplus_tree_init(int order, int entries);
 void bplus_tree_deinit(struct bplus_tree *tree);
 
