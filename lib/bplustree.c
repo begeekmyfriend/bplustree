@@ -297,16 +297,8 @@ static int parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
                 cache_defer(tree, parent);
                 return 0;
         } else if (r_ch->parent_key_offset == INVALID_OFFSET) {
-                /* left child cache flush */
-                //node_flush(tree, l_ch);
-                //node_flush(tree, r_ch);
-                /* trace upwards */
                 return non_leaf_insert(tree, node_fetch(tree, parent_offset(l_ch)), l_ch, r_ch, key);
         } else {
-                /* right child cache flush */
-                //node_flush(tree, l_ch);
-                //node_flush(tree, r_ch);
-                /* trace upwards */
                 return non_leaf_insert(tree, node_fetch(tree, parent_offset(r_ch)), l_ch, r_ch, key);
         }
 }
