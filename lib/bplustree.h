@@ -82,27 +82,23 @@ typedef struct node_cache {
 typedef struct bplus_node {
         struct node_cache *cache;
         off_t self;
-        off_t parent;
+        off_t parent_key_offset;
         off_t prev;
         off_t next;
         int type;
-        int parent_key_idx;
         /* If leaf node, it specifies  count of entries,
          * if non-leaf node, it specifies count of children(branches) */
         int children;
-        int reserve;
 } bplus_node;
 /*
 struct bplus_non_leaf {
         struct node_cache *cache;
         off_t self;
-        off_t parent;
+        off_t parent_key_offset;
         off_t prev;
         off_t next;
         int type;
-        int parent_key_idx;
         int children;
-        int reserve;
         key_t key[BPLUS_MAX_ORDER - 1];
         off_t sub_ptr[BPLUS_MAX_ORDER];
 };
@@ -110,13 +106,11 @@ struct bplus_non_leaf {
 struct bplus_leaf {
         struct node_cache *cache;
         off_t self;
-        off_t parent;
+        off_t parent_key_offset;
         off_t prev;
         off_t next;
         int type;
-        int parent_key_idx;
         int entries;
-        int reserve;
         key_t key[BPLUS_MAX_ENTRIES];
         long data[BPLUS_MAX_ENTRIES];
 };
@@ -124,10 +118,7 @@ struct bplus_leaf {
 struct bplus_tree {
         char filename[1024];
         int fd;
-        int order;
-        int entries;
         int level;
-        int block_size;
         off_t root;
         off_t file_size;
         struct list_head free_blocks;
