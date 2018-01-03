@@ -291,6 +291,7 @@ static int parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
                 tree->root = new_node_write(tree, parent);
                 l_ch->parent_key_offset = parent_key_offset(parent, -1);
                 r_ch->parent_key_offset = parent_key_offset(parent, 0);
+                tree->level++;
                 /* release parent, left and right child */
                 node_release(tree, l_ch);
                 node_release(tree, r_ch);
@@ -620,6 +621,7 @@ static int bplus_tree_insert(struct bplus_tree *tree, key_t key, long data)
         data(root)[0] = data;
         root->children = 1;
         tree->root = new_node_write(tree, root);
+        tree->level = 1;
         cache_defer(tree, root);
         return 0;
 }
@@ -923,6 +925,7 @@ static int leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, key_t k
                                 /* delete the only last node */
                                 assert(key == key(leaf)[0]);
                                 tree->root = INVALID_OFFSET;
+                                tree->level = 0;
                                 node_delete(tree, leaf, l_sib, r_sib);
                         } else {
                                 leaf_simple_remove(tree, leaf, remove);
