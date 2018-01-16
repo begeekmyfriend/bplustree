@@ -69,18 +69,7 @@ static inline int list_empty(const struct list_head *head)
         for (pos = (head)->next, n = pos->next; pos != (head); \
                 pos = n, n = pos->next)
 
-typedef struct free_block {
-        struct list_head link;
-        off_t offset;
-} free_block;
-
-typedef struct node_cache {
-        struct list_head link;
-        char *buf;
-} free_cache;
-
 typedef struct bplus_node {
-        struct node_cache *cache;
         off_t self;
         off_t prev;
         off_t next;
@@ -90,9 +79,9 @@ typedef struct bplus_node {
          * if non-leaf node, it specifies count of children(branches) */
         int children;
 } bplus_node;
+
 /*
 struct bplus_non_leaf {
-        struct node_cache *cache;
         off_t self;
         off_t prev;
         off_t next;
@@ -104,7 +93,6 @@ struct bplus_non_leaf {
 };
 
 struct bplus_leaf {
-        struct node_cache *cache;
         off_t self;
         off_t prev;
         off_t next;
@@ -115,6 +103,17 @@ struct bplus_leaf {
         long data[BPLUS_MAX_ENTRIES];
 };
 */
+
+typedef struct free_block {
+        struct list_head link;
+        off_t offset;
+} free_block;
+
+typedef struct node_cache {
+        struct list_head link;
+        struct bplus_node *buf;
+} node_cache;
+
 struct bplus_tree {
         char filename[1024];
         int fd;
