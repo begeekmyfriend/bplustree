@@ -31,13 +31,14 @@ enum {
 /* 5 node caches are needed at least for self, left and right sibling, sibling
  * of sibling, parent and node seeking */
 #define MIN_CACHE_NUM 5
+#define ADDR_STR_WIDTH 16
 #define offset_ptr(node) ((char *) (node) + sizeof(*node))
 #define key(node) ((key_t *)offset_ptr(node))
 #define data(node) ((long *)(offset_ptr(node) + _max_entries * sizeof(key_t)))
 #define sub(node) ((off_t *)(offset_ptr(node) + (_max_order - 1) * sizeof(key_t)))
 #define parent_offset(node) ((node)->parent_key_offset & ~(_block_size - 1))
 #define parent_key_offset(parent, index) ((parent)->self + sizeof(*parent) + (index) * sizeof(key_t))
-#define parent_key_index(node) (((node)->parent_key_offset - parent_offset(node) - sizeof(*node)) / sizeof(key_t))
+#define parent_key_index(node) ((off_t) ((node)->parent_key_offset - parent_offset(node) - sizeof(*node)) / (off_t) sizeof(key_t))
 
 static int _block_size;
 static int _max_entries;
@@ -1092,14 +1093,14 @@ static inline void hex_to_str(off_t offset, char *buf, int len)
 
 static inline off_t offset_load(int fd)
 {
-        char buf[2 * sizeof(off_t)];
+        char buf[ADDR_STR_WIDTH];
         ssize_t len = read(fd, buf, sizeof(buf));
         return len > 0 ? str_to_hex(buf, sizeof(buf)) : INVALID_OFFSET;
 }
 
 static inline ssize_t offset_store(int fd, off_t offset)
 {
-        char buf[2 * sizeof(off_t)];
+        char buf[ADDR_STR_WIDTH];
         hex_to_str(offset, buf, sizeof(buf));
         return write(fd, buf, sizeof(buf));
 }
@@ -1173,14 +1174,14 @@ void bplus_tree_deinit(struct bplus_tree *tree)
         struct list_head *pos, *n;
         int fd = open(tree->filename, O_CREAT | O_RDWR, 0644);
         assert(fd >= 0);
-        assert(offset_store(fd, tree->root) == 16);
-        assert(offset_store(fd, _block_size) == 16);
-        assert(offset_store(fd, tree->file_size) == 16);
+        assert(offset_store(fd, tree->root) == ADDR_STR_WIDTH);
+        assert(offset_store(fd, _block_size) == ADDR_STR_WIDTH);
+        assert(offset_store(fd, tree->file_size) == ADDR_STR_WIDTH);
         /* store free blocks in files for future reuse */
         list_for_each_safe(pos, n, &tree->free_blocks) {
                 list_del(pos);
                 struct free_block *block = list_entry(pos, struct free_block, link);
-                assert(offset_store(fd, block->offset) == 16);
+                assert(offset_store(fd, block->offset) == ADDR_STR_WIDTH);
                 free(block);
         }
         /* free node caches */
