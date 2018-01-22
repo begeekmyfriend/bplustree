@@ -171,10 +171,12 @@ static off_t new_node_append(struct bplus_tree *tree, struct node_cache *cache)
 static void node_delete(struct bplus_tree *tree, struct node_cache *cache,
                 	struct node_cache *l, struct node_cache *r)
 {
-        struct bplus_node *left = l->buf;
-        struct bplus_node *right = r->buf;
-        if (left != NULL) {
-                if (right != NULL) {
+        struct bplus_node *left;
+        struct bplus_node *right;
+        if (l != NULL) {
+                left = l->buf;
+                if (r != NULL) {
+                        right = r->buf;
                         left->next = right->self;
                         right->prev = left->self;
                         node_flush(tree, r);
@@ -183,7 +185,8 @@ static void node_delete(struct bplus_tree *tree, struct node_cache *cache,
                 }
                 node_flush(tree, l);
         } else {
-                if (right != NULL) {
+                if (r != NULL) {
+                        right = r->buf;
                         right->prev = INVALID_OFFSET;
                         node_flush(tree, r);
                 }
@@ -196,7 +199,7 @@ static void node_delete(struct bplus_tree *tree, struct node_cache *cache,
         /* deleted blocks can be allocated for other nodes */
         block->offset = node->self;
         list_add_tail(&block->link, &tree->free_blocks);
-        /* return the cacheper borrowed from */
+        /* return the cache borrowed from */
         cache_defer(tree, cache);
 }
 
@@ -776,67 +779,66 @@ static inline void non_leaf_simple_remove(struct bplus_tree *tree, struct bplus_
 static void non_leaf_remove(struct bplus_tree *tree, struct node_cache *cache, int remove)
 {
         struct bplus_node *node = cache->buf;
-        if (node->children <= (_max_order + 1) / 2) {
+        if (node->parent_key_offset == INVALID_OFFSET) {
+                /* node is the root */
+                if (node->children == 2) {
+                        /* replace old root with the first sub-node */
+                        struct node_cache *root_cache = node_fetch(tree, sub(node)[0]);
+                        struct bplus_node *new_root = root_cache->buf;
+                        new_root->parent_key_offset = INVALID_OFFSET;
+                        tree->root = new_root->self;
+                        tree->level--;
+                        node_delete(tree, cache, NULL, NULL);
+                        node_flush(tree, root_cache);
+                } else {
+                        non_leaf_simple_remove(tree, node, remove);
+                        node_flush(tree, cache);
+                }
+        } else if (node->children <= (_max_order + 1) / 2) {
                 struct node_cache *l = node_fetch(tree, node->prev);
                 struct node_cache *r = node_fetch(tree, node->next);
                 struct node_cache *p = node_fetch(tree, parent_offset(node));
-                if (p != NULL) {
-                        int i = parent_key_index(node);
-                        struct bplus_node *parent = p->buf;
 
-                        /* decide which sibling to be borrowed from */
-                        if (sibling_select(l, r, parent, i)  == LEFT_SIBLING) {
-                                struct bplus_node *l_sib = l->buf;
-                                if (l_sib->children > (_max_order + 1) / 2) {
-                                        non_leaf_shift_from_left(tree, node, l_sib, parent, i, remove);
-                                        /* flush nodes */
-                                        node_flush(tree, cache);
-                                        node_flush(tree, l);
-                                        node_flush(tree, r);
-                                        node_flush(tree, p);
-                                } else {
-                                        non_leaf_merge_into_left(tree, node, l_sib, parent, i, remove);
-                                        /* delete empty node and flush */
-                                        node_delete(tree, cache, l, r);
-                                        /* trace upwards */
-                                        non_leaf_remove(tree, p, i);
-                                }
+                int i = parent_key_index(node);
+                struct bplus_node *parent = p->buf;
+
+                /* decide which sibling to be borrowed from */
+                if (sibling_select(l, r, parent, i)  == LEFT_SIBLING) {
+                        struct bplus_node *l_sib = l->buf;
+                        if (l_sib->children > (_max_order + 1) / 2) {
+                                non_leaf_shift_from_left(tree, node, l_sib, parent, i, remove);
+                                /* flush nodes */
+                                node_flush(tree, cache);
+                                node_flush(tree, l);
+                                node_flush(tree, r);
+                                node_flush(tree, p);
                         } else {
-                                /* remove at first in case of overflow during merging with sibling */
-                                non_leaf_simple_remove(tree, node, remove);
-
-                                struct bplus_node *r_sib = r->buf;
-                                if (r_sib->children > (_max_order + 1) / 2) {
-                                        non_leaf_shift_from_right(tree, node, r_sib, parent, i + 1);
-                                        /* flush nodes */
-                                        node_flush(tree, cache);
-                                        node_flush(tree, l);
-                                        node_flush(tree, r);
-                                        node_flush(tree, p);
-                                } else {
-                                        non_leaf_merge_from_right(tree, node, r_sib, parent, i + 1);
-                                        /* delete empty right sibling and flush */
-                                        struct node_cache *rr = node_fetch(tree, r_sib->next);
-                                        node_delete(tree, r, cache, rr);
-                                        node_flush(tree, l);
-                                        /* trace upwards */
-                                        non_leaf_remove(tree, p, i + 1);
-                                }
+                                non_leaf_merge_into_left(tree, node, l_sib, parent, i, remove);
+                                /* delete empty node and flush */
+                                node_delete(tree, cache, l, r);
+                                /* trace upwards */
+                                non_leaf_remove(tree, p, i);
                         }
                 } else {
-                        if (node->children == 2) {
-                                /* replace old root with the first sub-node */
-                                assert(remove == 0);
-                                struct node_cache *root_cache = node_fetch(tree, sub(node)[0]);
-                                struct bplus_node *new_root = root_cache->buf;
-                                new_root->parent_key_offset = INVALID_OFFSET;
-                                tree->root = new_root->self;
-                                tree->level--;
-                                node_delete(tree, cache, l, r);
-                                node_flush(tree, root_cache);
-                        } else {
-                                non_leaf_simple_remove(tree, node, remove);
+                        /* remove at first in case of overflow during merging with sibling */
+                        non_leaf_simple_remove(tree, node, remove);
+
+                        struct bplus_node *r_sib = r->buf;
+                        if (r_sib->children > (_max_order + 1) / 2) {
+                                non_leaf_shift_from_right(tree, node, r_sib, parent, i + 1);
+                                /* flush nodes */
                                 node_flush(tree, cache);
+                                node_flush(tree, l);
+                                node_flush(tree, r);
+                                node_flush(tree, p);
+                        } else {
+                                non_leaf_merge_from_right(tree, node, r_sib, parent, i + 1);
+                                /* delete empty right sibling and flush */
+                                struct node_cache *rr = node_fetch(tree, r_sib->next);
+                                node_delete(tree, r, cache, rr);
+                                node_flush(tree, l);
+                                /* trace upwards */
+                                non_leaf_remove(tree, p, i + 1);
                         }
                 }
         } else {
@@ -914,64 +916,63 @@ static int leaf_remove(struct bplus_tree *tree, struct node_cache *cache, key_t 
         /* fetch from cache list */
         list_del(&cache->link);
 
-        if (leaf->children <= (_max_entries + 1) / 2) {
+        if (leaf->parent_key_offset == INVALID_OFFSET) {
+                /* leaf is the root */
+                if (leaf->children == 1) {
+                        /* delete the only last node */
+                        assert(key == key(leaf)[0]);
+                        tree->root = INVALID_OFFSET;
+                        tree->level = 0;
+                        node_delete(tree, cache, NULL, NULL);
+                } else {
+                        leaf_simple_remove(tree, leaf, remove);
+                        node_flush(tree, cache);
+                }
+        } else if (leaf->children <= (_max_entries + 1) / 2) {
                 struct node_cache *l = node_fetch(tree, leaf->prev);
                 struct node_cache *r = node_fetch(tree, leaf->next);
                 struct node_cache *p = node_fetch(tree, parent_offset(leaf));
 
-                if (p != NULL) {
-                        int i = parent_key_index(leaf);
-                        struct bplus_node *parent = p->buf;
+                int i = parent_key_index(leaf);
+                struct bplus_node *parent = p->buf;
 
-                        /* decide which sibling to be borrowed from */
-                        if (sibling_select(l, r, parent, i) == LEFT_SIBLING) {
-                                struct bplus_node *l_sib = l->buf;
-                                if (l_sib->children > (_max_entries + 1) / 2) {
-                                        leaf_shift_from_left(tree, leaf, l_sib, parent, i, remove);
-                                        /* flush leaves */
-                                        node_flush(tree, cache);
-                                        node_flush(tree, l);
-                                        node_flush(tree, r);
-                                        node_flush(tree, p);
-                                } else {
-                                        leaf_merge_into_left(tree, leaf, l_sib, i, remove);
-                                        /* delete empty leaf and flush */
-                                        node_delete(tree, cache, l, r);
-                                        /* trace upwards */
-                                        non_leaf_remove(tree, p, i);
-                                }
+                /* decide which sibling to be borrowed from */
+                if (sibling_select(l, r, parent, i) == LEFT_SIBLING) {
+                        struct bplus_node *l_sib = l->buf;
+                        if (l_sib->children > (_max_entries + 1) / 2) {
+                                leaf_shift_from_left(tree, leaf, l_sib, parent, i, remove);
+                                /* flush leaves */
+                                node_flush(tree, cache);
+                                node_flush(tree, l);
+                                node_flush(tree, r);
+                                node_flush(tree, p);
                         } else {
-                                /* remove at first in case of overflow during merging with sibling */
-                                leaf_simple_remove(tree, leaf, remove);
-
-                                struct bplus_node *r_sib = r->buf;
-                                if (r_sib->children > (_max_entries + 1) / 2) {
-                                        leaf_shift_from_right(tree, leaf, r_sib, parent, i + 1);
-                                        /* flush leaves */
-                                        node_flush(tree, cache);
-                                        node_flush(tree, l);
-                                        node_flush(tree, r);
-                                        node_flush(tree, p);
-                                } else {
-                                        leaf_merge_from_right(tree, leaf, r_sib);
-                                        /* delete empty right sibling flush */
-                                        struct node_cache *rr = node_fetch(tree, r_sib->next);
-                                        node_delete(tree, r, cache, rr);
-                                        node_flush(tree, l);
-                                        /* trace upwards */
-                                        non_leaf_remove(tree, p, i + 1);
-                                }
+                                leaf_merge_into_left(tree, leaf, l_sib, i, remove);
+                                /* delete empty leaf and flush */
+                                node_delete(tree, cache, l, r);
+                                /* trace upwards */
+                                non_leaf_remove(tree, p, i);
                         }
                 } else {
-                        if (leaf->children == 1) {
-                                /* delete the only last node */
-                                assert(key == key(leaf)[0]);
-                                tree->root = INVALID_OFFSET;
-                                tree->level = 0;
-                                node_delete(tree, cache, l, r);
-                        } else {
-                                leaf_simple_remove(tree, leaf, remove);
+                        /* remove at first in case of overflow during merging with sibling */
+                        leaf_simple_remove(tree, leaf, remove);
+
+                        struct bplus_node *r_sib = r->buf;
+                        if (r_sib->children > (_max_entries + 1) / 2) {
+                                leaf_shift_from_right(tree, leaf, r_sib, parent, i + 1);
+                                /* flush leaves */
                                 node_flush(tree, cache);
+                                node_flush(tree, l);
+                                node_flush(tree, r);
+                                node_flush(tree, p);
+                        } else {
+                                leaf_merge_from_right(tree, leaf, r_sib);
+                                /* delete empty right sibling flush */
+                                struct node_cache *rr = node_fetch(tree, r_sib->next);
+                                node_delete(tree, r, cache, rr);
+                                node_flush(tree, l);
+                                /* trace upwards */
+                                non_leaf_remove(tree, p, i + 1);
                         }
                 }
         } else {
@@ -1171,25 +1172,28 @@ struct bplus_tree *bplus_tree_init(char *filename, int block_size)
 
 void bplus_tree_deinit(struct bplus_tree *tree)
 {
-        struct list_head *pos, *n;
         int fd = open(tree->filename, O_CREAT | O_RDWR, 0644);
         assert(fd >= 0);
         assert(offset_store(fd, tree->root) == ADDR_STR_WIDTH);
         assert(offset_store(fd, _block_size) == ADDR_STR_WIDTH);
         assert(offset_store(fd, tree->file_size) == ADDR_STR_WIDTH);
+
         /* store free blocks in files for future reuse */
+        struct list_head *pos, *n;
         list_for_each_safe(pos, n, &tree->free_blocks) {
                 list_del(pos);
                 struct free_block *block = list_entry(pos, struct free_block, link);
                 assert(offset_store(fd, block->offset) == ADDR_STR_WIDTH);
                 free(block);
         }
+
         /* free node caches */
         list_for_each_safe(pos, n, &tree->free_caches) {
                 struct node_cache *cache = list_entry(pos, struct node_cache, link);
                 free(cache->buf);
                 free(cache);
         }
+
         close(fd);
         bplus_close(tree->fd);
         free(tree);
