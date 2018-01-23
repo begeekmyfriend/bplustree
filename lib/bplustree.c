@@ -30,7 +30,6 @@ enum {
 
 /* 5 node caches are needed at least for self, left and right sibling, sibling
  * of sibling, parent and node seeking */
-#define MIN_CACHE_NUM 5
 #define ADDR_STR_WIDTH 16
 #define offset_ptr(node) ((char *) (node) + sizeof(*node))
 #define key(node) ((key_t *)offset_ptr(node))
@@ -72,89 +71,94 @@ static int key_binary_search(struct bplus_node *node, key_t target)
         }
 }
 
-static inline struct node_cache *cache_refer(struct bplus_tree *tree)
+static inline struct bplus_node *cache_refer(struct bplus_tree *tree)
 {
-        struct node_cache *cache;
-        assert(!list_empty(&tree->free_caches));
-        cache = list_first_entry(&tree->free_caches, struct node_cache, link);
-        list_del(&cache->link);
-        return cache;
+        int i;
+        for (i = 0; i < MIN_CACHE_NUM; i++) {
+                if (!tree->used[i]) {
+                        tree->used[i] = 1;
+                        char *buf = tree->caches + _block_size * i;
+                        return (struct bplus_node *) buf;
+                }
+        }
+        assert(0);
 }
 
-static inline void cache_defer(struct bplus_tree *tree, struct node_cache *cache)
+static inline void cache_defer(struct bplus_tree *tree, struct bplus_node *node)
 {
-        /* return the cache borrowed from */
-        list_add_tail(&cache->link, &tree->free_caches);
+        /* return the node cache borrowed from */
+        char *buf = (char *) node;
+        int i = (buf - tree->caches) / _block_size;
+        tree->used[i] = 0;
 }
 
-static struct node_cache *node_new(struct bplus_tree *tree)
+static struct bplus_node *node_new(struct bplus_tree *tree)
 {
-        struct node_cache *cache = cache_refer(tree);
-        struct bplus_node *node = (struct bplus_node *) cache->buf;
+        struct bplus_node *node = cache_refer(tree);
         node->prev = INVALID_OFFSET;
         node->next = INVALID_OFFSET;
         node->self = INVALID_OFFSET;
         node->parent_key_offset = INVALID_OFFSET;
         node->children = 0;
-        return cache;
+        return node;
 }
 
-static inline struct node_cache *non_leaf_new(struct bplus_tree *tree)
+static inline struct bplus_node *non_leaf_new(struct bplus_tree *tree)
 {
-        struct node_cache *cache = node_new(tree);
-        struct bplus_node *node = (struct bplus_node *) cache->buf;
+        struct bplus_node *node = node_new(tree);
         node->type = BPLUS_TREE_NON_LEAF;
-        return cache;
+        return node;
 }
 
-static inline struct node_cache *leaf_new(struct bplus_tree *tree)
+static inline struct bplus_node *leaf_new(struct bplus_tree *tree)
 {
-        struct node_cache *cache = node_new(tree);
-        struct bplus_node *node = (struct bplus_node *) cache->buf;
+        struct bplus_node *node = node_new(tree);
         node->type = BPLUS_TREE_LEAF;
-        return cache;
+        return node;
 }
 
-static struct node_cache *node_fetch(struct bplus_tree *tree, off_t offset)
+static struct bplus_node *node_fetch(struct bplus_tree *tree, off_t offset)
 {
         if (offset == INVALID_OFFSET) {
                 return NULL;
         }
 
-        struct node_cache *cache = cache_refer(tree);
-        int len = pread(tree->fd, cache->buf, _block_size, offset);
+        struct bplus_node *node = cache_refer(tree);
+        int len = pread(tree->fd, node, _block_size, offset);
         assert(len == _block_size);
-        return cache;
+        return node;
 }
 
-static struct node_cache *node_seek(struct bplus_tree *tree, off_t offset)
+static struct bplus_node *node_seek(struct bplus_tree *tree, off_t offset)
 {
         if (offset == INVALID_OFFSET) {
                 return NULL;
         }
 
-        struct node_cache *cache;
-        assert(!list_empty(&tree->free_caches));
-        cache = list_first_entry(&tree->free_caches, struct node_cache, link);
-        int len = pread(tree->fd, cache->buf, _block_size, offset);
-        assert(len == _block_size);
-        return cache;
+        int i;
+        for (i = 0; i < MIN_CACHE_NUM; i++) {
+                if (!tree->used[i]) {
+                        char *buf = tree->caches + _block_size * i;
+                        int len = pread(tree->fd, buf, _block_size, offset);
+                        assert(len == _block_size);
+                        return (struct bplus_node *) buf;
+                }
+        }
+        assert(0);
 }
 
-static inline void node_flush(struct bplus_tree *tree, struct node_cache *cache)
+static inline void node_flush(struct bplus_tree *tree, struct bplus_node *node)
 {
-        if (cache != NULL) {
-                struct bplus_node *node = cache->buf;
+        if (node != NULL) {
                 int len = pwrite(tree->fd, node, _block_size, node->self);
                 assert(len == _block_size);
-                cache_defer(tree, cache);
+                cache_defer(tree, node);
         }
 }
 
-static off_t new_node_append(struct bplus_tree *tree, struct node_cache *cache)
+static off_t new_node_append(struct bplus_tree *tree, struct bplus_node *node)
 {
         /* assign new offset to the new node */
-        struct bplus_node *node = cache->buf;
         if (list_empty(&tree->free_blocks)) {
                 node->self = tree->file_size;
                 tree->file_size += _block_size;
@@ -168,77 +172,68 @@ static off_t new_node_append(struct bplus_tree *tree, struct node_cache *cache)
         return node->self;
 }
 
-static void node_delete(struct bplus_tree *tree, struct node_cache *cache,
-                	struct node_cache *l, struct node_cache *r)
+static void node_delete(struct bplus_tree *tree, struct bplus_node *node,
+                	struct bplus_node *left, struct bplus_node *right)
 {
-        struct bplus_node *left;
-        struct bplus_node *right;
-        if (l != NULL) {
-                left = l->buf;
-                if (r != NULL) {
-                        right = r->buf;
+        if (left != NULL) {
+                if (right != NULL) {
                         left->next = right->self;
                         right->prev = left->self;
-                        node_flush(tree, r);
+                        node_flush(tree, right);
                 } else {
                         left->next = INVALID_OFFSET;
                 }
-                node_flush(tree, l);
+                node_flush(tree, left);
         } else {
-                if (r != NULL) {
-                        right = r->buf;
+                if (right != NULL) {
                         right->prev = INVALID_OFFSET;
-                        node_flush(tree, r);
+                        node_flush(tree, right);
                 }
         }
 
-        struct bplus_node *node = cache->buf;
         assert(node->self != INVALID_OFFSET);
         struct free_block *block = malloc(sizeof(*block));
         assert(block != NULL);
         /* deleted blocks can be allocated for other nodes */
         block->offset = node->self;
         list_add_tail(&block->link, &tree->free_blocks);
-        /* return the cache borrowed from */
-        cache_defer(tree, cache);
+        /* return the node cache borrowed from */
+        cache_defer(tree, node);
 }
 
 static inline void sub_node_update(struct bplus_tree *tree, struct bplus_node *parent,
-                		   int i, struct node_cache *cache)
+                		   int i, struct bplus_node *sub_node)
 {
-        struct bplus_node *sub_node = cache->buf;
         assert(sub_node->self != INVALID_OFFSET);
         sub(parent)[i] = sub_node->self;
         sub_node->parent_key_offset = parent_key_offset(parent, i - 1);
-        node_flush(tree, cache);
+        node_flush(tree, sub_node);
 }
 
 static inline void sub_node_flush(struct bplus_tree *tree, struct bplus_node *parent,
                 		  off_t sub_offset, int key_idx)
 {
-        struct node_cache *cache = node_fetch(tree, sub_offset);
-        assert(cache != NULL);
-        struct bplus_node *sub_node = cache->buf;
+        struct bplus_node *sub_node = node_fetch(tree, sub_offset);
+        assert(sub_node != NULL);
         sub_node->parent_key_offset = parent_key_offset(parent, key_idx);
-        node_flush(tree, cache);
+        node_flush(tree, sub_node);
 }
 
 static long bplus_tree_search(struct bplus_tree *tree, key_t key)
 {
         int ret = -1;
-        struct node_cache *cache = node_seek(tree, tree->root);
-        while (cache != NULL) {
-                struct bplus_node *node = cache->buf;
+        struct bplus_node *node = node_seek(tree, tree->root);
+        while (node != NULL) {
                 int i = key_binary_search(node, key);
                 if (is_leaf(node)) {
                         ret = i >= 0 ? data(node)[i] : -1;
                         break;
                 } else {
                         if (i >= 0) {
-                                cache = node_seek(tree, sub(node)[i + 1]);
+                                node = node_seek(tree, sub(node)[i + 1]);
                         } else {
                                 i = -i - 1;
-                                cache = node_seek(tree, sub(node)[i]);
+                                node = node_seek(tree, sub(node)[i]);
                         }
                 }
         }
@@ -246,18 +241,15 @@ static long bplus_tree_search(struct bplus_tree *tree, key_t key)
         return ret;
 }
 
-static void left_node_add(struct bplus_tree *tree, struct node_cache *cache, struct node_cache *l)
+static void left_node_add(struct bplus_tree *tree, struct bplus_node *node, struct bplus_node *left)
 {
-        new_node_append(tree, l);
+        new_node_append(tree, left);
 
-        struct bplus_node *node = cache->buf;
-        struct bplus_node *left = l->buf;
-        struct node_cache *p = node_fetch(tree, node->prev);
-        if (p != NULL) {
-                struct bplus_node *prev = p->buf;
+        struct bplus_node *prev = node_fetch(tree, node->prev);
+        if (prev != NULL) {
                 prev->next = left->self;
                 left->prev = prev->self;
-                node_flush(tree, p);
+                node_flush(tree, prev);
         } else {
                 left->prev = INVALID_OFFSET;
         }
@@ -265,18 +257,15 @@ static void left_node_add(struct bplus_tree *tree, struct node_cache *cache, str
         node->prev = left->self;
 }
 
-static void right_node_add(struct bplus_tree *tree, struct node_cache *cache, struct node_cache *r)
+static void right_node_add(struct bplus_tree *tree, struct bplus_node *node, struct bplus_node *right)
 {
-        new_node_append(tree, r);
+        new_node_append(tree, right);
 
-        struct bplus_node *node = cache->buf;
-        struct bplus_node *right = r->buf;
-        struct node_cache *n = node_fetch(tree, node->next);
-        if (n != NULL) {
-                struct bplus_node *next = n->buf;
+        struct bplus_node *next = node_fetch(tree, node->next);
+        if (next != NULL) {
                 next->prev = right->self;
                 right->next = next->self;
-                node_flush(tree, n);
+                node_flush(tree, next);
         } else {
                 right->next = INVALID_OFFSET;
         }
@@ -284,41 +273,39 @@ static void right_node_add(struct bplus_tree *tree, struct node_cache *cache, st
         node->next = right->self;
 }
 
-static key_t non_leaf_insert(struct bplus_tree *tree, struct node_cache *node,
-                             struct node_cache *l_ch, struct node_cache *r_ch, key_t key);
+static key_t non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
+                             struct bplus_node *l_ch, struct bplus_node *r_ch, key_t key);
 
-static int parent_node_build(struct bplus_tree *tree, struct node_cache *l, struct node_cache *r, key_t key)
+static int parent_node_build(struct bplus_tree *tree, struct bplus_node *l_ch,
+                             struct bplus_node *r_ch, key_t key)
 {
-        struct bplus_node *l_ch = l->buf;
-        struct bplus_node *r_ch = r->buf;
         if (l_ch->parent_key_offset == INVALID_OFFSET && r_ch->parent_key_offset == INVALID_OFFSET) {
                 /* new parent */
-                struct node_cache *p = non_leaf_new(tree);
-                struct bplus_node *parent = p->buf;
+                struct bplus_node *parent = non_leaf_new(tree);
                 key(parent)[0] = key;
                 sub(parent)[0] = l_ch->self;
                 sub(parent)[1] = r_ch->self;
                 parent->children = 2;
                 /* write new parent and update root */
-                tree->root = new_node_append(tree, p);
+                tree->root = new_node_append(tree, parent);
                 l_ch->parent_key_offset = parent_key_offset(parent, -1);
                 r_ch->parent_key_offset = parent_key_offset(parent, 0);
                 tree->level++;
                 /* flush parent, left and right child */
-                node_flush(tree, l);
-                node_flush(tree, r);
-                node_flush(tree, p);
+                node_flush(tree, l_ch);
+                node_flush(tree, r_ch);
+                node_flush(tree, parent);
                 return 0;
         } else if (r_ch->parent_key_offset == INVALID_OFFSET) {
-                return non_leaf_insert(tree, node_fetch(tree, parent_offset(l_ch)), l, r, key);
+                return non_leaf_insert(tree, node_fetch(tree, parent_offset(l_ch)), l_ch, r_ch, key);
         } else {
-                return non_leaf_insert(tree, node_fetch(tree, parent_offset(r_ch)), l, r, key);
+                return non_leaf_insert(tree, node_fetch(tree, parent_offset(r_ch)), l_ch, r_ch, key);
         }
 }
 
-static key_t non_leaf_split_left(struct bplus_tree *tree, struct node_cache *cache,
-                	         struct node_cache *l, struct node_cache *l_ch,
-                	         struct node_cache *r_ch, key_t key, int insert)
+static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *node,
+                	         struct bplus_node *left, struct bplus_node *l_ch,
+                	         struct bplus_node *r_ch, key_t key, int insert)
 {
         int i;
         key_t split_key;
@@ -327,12 +314,10 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct node_cache *cac
         int split = (_max_order + 1) / 2;
 
         /* split as left sibling */
-        left_node_add(tree, cache, l);
+        left_node_add(tree, node, left);
 
         /* calculate split nodes' children (sum as (order + 1))*/
         int pivot = insert;
-        struct bplus_node *node = cache->buf;
-        struct bplus_node *left = l->buf;
         left->children = split;
         node->children = _max_order - split + 1;
 
@@ -381,9 +366,9 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct node_cache *cac
         return split_key;
 }
 
-static key_t non_leaf_split_right1(struct bplus_tree *tree, struct node_cache *cache,
-                        	   struct node_cache *r, struct node_cache *l_ch,
-                        	   struct node_cache *r_ch, key_t key, int insert)
+static key_t non_leaf_split_right1(struct bplus_tree *tree, struct bplus_node *node,
+                        	   struct bplus_node *right, struct bplus_node *l_ch,
+                        	   struct bplus_node *r_ch, key_t key, int insert)
 {
         int i;
 
@@ -391,15 +376,13 @@ static key_t non_leaf_split_right1(struct bplus_tree *tree, struct node_cache *c
         int split = (_max_order + 1) / 2;
 
         /* split as right sibling */
-        right_node_add(tree, cache, r);
+        right_node_add(tree, node, right);
 
         /* split key is key[split - 1] */
-        struct bplus_node *node = cache->buf;
         key_t split_key = key(node)[split - 1];
 
         /* calculate split nodes' children (sum as (order + 1))*/
         int pivot = 0;
-        struct bplus_node *right = r->buf;
         node->children = split;
         right->children = _max_order - split + 1;
 
@@ -421,9 +404,9 @@ static key_t non_leaf_split_right1(struct bplus_tree *tree, struct node_cache *c
         return split_key;
 }
 
-static key_t non_leaf_split_right2(struct bplus_tree *tree, struct node_cache *cache,
-                        	   struct node_cache *r, struct node_cache *l_ch,
-                        	   struct node_cache *r_ch, key_t key, int insert)
+static key_t non_leaf_split_right2(struct bplus_tree *tree, struct bplus_node *node,
+                        	   struct bplus_node *right, struct bplus_node *l_ch,
+                        	   struct bplus_node *r_ch, key_t key, int insert)
 {
         int i;
 
@@ -431,15 +414,13 @@ static key_t non_leaf_split_right2(struct bplus_tree *tree, struct node_cache *c
         int split = (_max_order + 1) / 2;
 
         /* split as right sibling */
-        right_node_add(tree, cache, r);
+        right_node_add(tree, node, right);
 
         /* split key is key[split] */
-        struct bplus_node *node = cache->buf;
         key_t split_key = key(node)[split];
 
         /* calculate split nodes' children (sum as (order + 1))*/
         int pivot = insert - split - 1;
-        struct bplus_node *right = r->buf;
         node->children = split + 1;
         right->children = _max_order - split;
 
@@ -468,7 +449,7 @@ static key_t non_leaf_split_right2(struct bplus_tree *tree, struct node_cache *c
 }
 
 static void non_leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *node,
-                        	   struct node_cache *l_ch, struct node_cache *r_ch,
+                        	   struct bplus_node *l_ch, struct bplus_node *r_ch,
                         	   key_t key, int insert)
 {
         int i;
@@ -484,11 +465,10 @@ static void non_leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *n
         node->children++;
 }
 
-static int non_leaf_insert(struct bplus_tree *tree, struct node_cache *cache,
-                	   struct node_cache *l_ch, struct node_cache *r_ch, key_t key)
+static int non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
+                	   struct bplus_node *l_ch, struct bplus_node *r_ch, key_t key)
 {
         /* Search key location */
-        struct bplus_node *node = cache->buf;
         int insert = key_binary_search(node, key);
         assert(insert < 0);
         insert = -insert - 1;
@@ -498,40 +478,38 @@ static int non_leaf_insert(struct bplus_tree *tree, struct node_cache *cache,
                 key_t split_key;
                 /* split = [m/2] */
                 int split = (node->children + 1) / 2;
-                struct node_cache *sibling = non_leaf_new(tree);
+                struct bplus_node *sibling = non_leaf_new(tree);
                 if (insert < split) {
-                        split_key = non_leaf_split_left(tree, cache, sibling, l_ch, r_ch, key, insert);
+                        split_key = non_leaf_split_left(tree, node, sibling, l_ch, r_ch, key, insert);
                 } else if (insert == split) {
-                        split_key = non_leaf_split_right1(tree, cache, sibling, l_ch, r_ch, key, insert);
+                        split_key = non_leaf_split_right1(tree, node, sibling, l_ch, r_ch, key, insert);
                 } else {
-                        split_key = non_leaf_split_right2(tree, cache, sibling, l_ch, r_ch, key, insert);
+                        split_key = non_leaf_split_right2(tree, node, sibling, l_ch, r_ch, key, insert);
                 }
                 /* build new parent */
                 if (insert < split) {
-                        return parent_node_build(tree, sibling, cache, split_key);
+                        return parent_node_build(tree, sibling, node, split_key);
                 } else {
-                        return parent_node_build(tree, cache, sibling, split_key);
+                        return parent_node_build(tree, node, sibling, split_key);
                 }
         } else {
                 non_leaf_simple_insert(tree, node, l_ch, r_ch, key, insert);
-                node_flush(tree, cache);
+                node_flush(tree, node);
         }
         return 0;
 }
 
-static key_t leaf_split_left(struct bplus_tree *tree, struct node_cache *cache,
-                	     struct node_cache *l, key_t key, long data, int insert)
+static key_t leaf_split_left(struct bplus_tree *tree, struct bplus_node *leaf,
+                	     struct bplus_node *left, key_t key, long data, int insert)
 {
         /* split = [m/2] */
-        struct bplus_node *leaf = cache->buf;
         int split = (leaf->children + 1) / 2;
 
         /* split as left sibling */
-        left_node_add(tree, cache, l);
+        left_node_add(tree, leaf, left);
 
         /* calculate split leaves' children (sum as (entries + 1)) */
         int pivot = insert;
-        struct bplus_node *left = l->buf;
         left->children = split;
         leaf->children = _max_entries - split + 1;
 
@@ -555,19 +533,17 @@ static key_t leaf_split_left(struct bplus_tree *tree, struct node_cache *cache,
         return key(leaf)[0];
 }
 
-static key_t leaf_split_right(struct bplus_tree *tree, struct node_cache *cache,
-                	      struct node_cache *r, key_t key, long data, int insert)
+static key_t leaf_split_right(struct bplus_tree *tree, struct bplus_node *leaf,
+                	      struct bplus_node *right, key_t key, long data, int insert)
 {
         /* split = [m/2] */
-        struct bplus_node *leaf = cache->buf;
         int split = (leaf->children + 1) / 2;
 
         /* split as right sibling */
-        right_node_add(tree, cache, r);
+        right_node_add(tree, leaf, right);
 
         /* calculate split leaves' children (sum as (entries + 1)) */
         int pivot = insert - split;
-        struct bplus_node *right = r->buf;
         leaf->children = split;
         right->children = _max_entries - split + 1;
 
@@ -597,10 +573,9 @@ static void leaf_simple_insert(struct bplus_tree *tree, struct bplus_node *leaf,
         leaf->children++;
 }
 
-static int leaf_insert(struct bplus_tree *tree, struct node_cache *cache, key_t key, long data)
+static int leaf_insert(struct bplus_tree *tree, struct bplus_node *leaf, key_t key, long data)
 {
         /* Search key location */
-        struct bplus_node *leaf = cache->buf;
         int insert = key_binary_search(leaf, key);
         if (insert >= 0) {
                 /* Already exists */
@@ -608,30 +583,31 @@ static int leaf_insert(struct bplus_tree *tree, struct node_cache *cache, key_t 
         }
         insert = -insert - 1;
 
-        /* fetch from free caches */
-        list_del(&cache->link);
+        /* fetch from free node caches */
+        int i = ((char *) leaf - tree->caches) / _block_size;
+        tree->used[i] = 1;
 
         /* leaf is full */
         if (leaf->children == _max_entries) {
                 key_t split_key;
                 /* split = [m/2] */
                 int split = (_max_entries + 1) / 2;
-                struct node_cache *sibling = leaf_new(tree);
+                struct bplus_node *sibling = leaf_new(tree);
                 /* sibling leaf replication due to location of insertion */
                 if (insert < split) {
-                        split_key = leaf_split_left(tree, cache, sibling, key, data, insert);
+                        split_key = leaf_split_left(tree, leaf, sibling, key, data, insert);
                 } else {
-                        split_key = leaf_split_right(tree, cache, sibling, key, data, insert);
+                        split_key = leaf_split_right(tree, leaf, sibling, key, data, insert);
                 }
                 /* build new parent */
                 if (insert < split) {
-                        return parent_node_build(tree, sibling, cache, split_key);
+                        return parent_node_build(tree, sibling, leaf, split_key);
                 } else {
-                        return parent_node_build(tree, cache, sibling, split_key);
+                        return parent_node_build(tree, leaf, sibling, split_key);
                 }
         } else {
                 leaf_simple_insert(tree, leaf, key, data, insert);
-                node_flush(tree, cache);
+                node_flush(tree, leaf);
         }
 
         return 0;
@@ -639,35 +615,33 @@ static int leaf_insert(struct bplus_tree *tree, struct node_cache *cache, key_t 
 
 static int bplus_tree_insert(struct bplus_tree *tree, key_t key, long data)
 {
-        struct node_cache *cache = node_seek(tree, tree->root);
-        while (cache != NULL) {
-                struct bplus_node *node = cache->buf;
+        struct bplus_node *node = node_seek(tree, tree->root);
+        while (node != NULL) {
                 if (is_leaf(node)) {
-                        return leaf_insert(tree, cache, key, data);
+                        return leaf_insert(tree, node, key, data);
                 } else {
                         int i = key_binary_search(node, key);
                         if (i >= 0) {
-                                cache = node_seek(tree, sub(node)[i + 1]);
+                                node = node_seek(tree, sub(node)[i + 1]);
                         } else {
                                 i = -i - 1;
-                                cache = node_seek(tree, sub(node)[i]);
+                                node = node_seek(tree, sub(node)[i]);
                         }
                 }
         }
 
         /* new root */
-        cache = leaf_new(tree);
-        struct bplus_node *root = cache->buf;
+        struct bplus_node *root = leaf_new(tree);
         key(root)[0] = key;
         data(root)[0] = data;
         root->children = 1;
-        tree->root = new_node_append(tree, cache);
+        tree->root = new_node_append(tree, root);
         tree->level = 1;
-        node_flush(tree, cache);
+        node_flush(tree, root);
         return 0;
 }
 
-static inline int sibling_select(struct node_cache *l, struct node_cache *r,
+static inline int sibling_select(struct bplus_node *l_sib, struct bplus_node *r_sib,
                                  struct bplus_node *parent, int i)
 {
         if (i == -1) {
@@ -678,8 +652,6 @@ static inline int sibling_select(struct node_cache *l, struct node_cache *r,
                 return LEFT_SIBLING;
         } else {
                 /* if both left and right sibling found, choose the one with more children */
-                struct bplus_node *l_sib = l->buf;
-                struct bplus_node *r_sib = r->buf;
                 return l_sib->children >= r_sib->children ? LEFT_SIBLING : RIGHT_SIBLING;
         }
 }
@@ -776,74 +748,68 @@ static inline void non_leaf_simple_remove(struct bplus_tree *tree, struct bplus_
         node->children--;
 }
 
-static void non_leaf_remove(struct bplus_tree *tree, struct node_cache *cache, int remove)
+static void non_leaf_remove(struct bplus_tree *tree, struct bplus_node *node, int remove)
 {
-        struct bplus_node *node = cache->buf;
         if (node->parent_key_offset == INVALID_OFFSET) {
                 /* node is the root */
                 if (node->children == 2) {
                         /* replace old root with the first sub-node */
-                        struct node_cache *root_cache = node_fetch(tree, sub(node)[0]);
-                        struct bplus_node *new_root = root_cache->buf;
-                        new_root->parent_key_offset = INVALID_OFFSET;
-                        tree->root = new_root->self;
+                        struct bplus_node *root = node_fetch(tree, sub(node)[0]);
+                        root->parent_key_offset = INVALID_OFFSET;
+                        tree->root = root->self;
                         tree->level--;
-                        node_delete(tree, cache, NULL, NULL);
-                        node_flush(tree, root_cache);
+                        node_delete(tree, node, NULL, NULL);
+                        node_flush(tree, root);
                 } else {
                         non_leaf_simple_remove(tree, node, remove);
-                        node_flush(tree, cache);
+                        node_flush(tree, node);
                 }
         } else if (node->children <= (_max_order + 1) / 2) {
-                struct node_cache *l = node_fetch(tree, node->prev);
-                struct node_cache *r = node_fetch(tree, node->next);
-                struct node_cache *p = node_fetch(tree, parent_offset(node));
-
                 int i = parent_key_index(node);
-                struct bplus_node *parent = p->buf;
+                struct bplus_node *l_sib = node_fetch(tree, node->prev);
+                struct bplus_node *r_sib = node_fetch(tree, node->next);
+                struct bplus_node *parent = node_fetch(tree, parent_offset(node));
 
                 /* decide which sibling to be borrowed from */
-                if (sibling_select(l, r, parent, i)  == LEFT_SIBLING) {
-                        struct bplus_node *l_sib = l->buf;
+                if (sibling_select(l_sib, r_sib, parent, i)  == LEFT_SIBLING) {
                         if (l_sib->children > (_max_order + 1) / 2) {
                                 non_leaf_shift_from_left(tree, node, l_sib, parent, i, remove);
                                 /* flush nodes */
-                                node_flush(tree, cache);
-                                node_flush(tree, l);
-                                node_flush(tree, r);
-                                node_flush(tree, p);
+                                node_flush(tree, node);
+                                node_flush(tree, l_sib);
+                                node_flush(tree, r_sib);
+                                node_flush(tree, parent);
                         } else {
                                 non_leaf_merge_into_left(tree, node, l_sib, parent, i, remove);
                                 /* delete empty node and flush */
-                                node_delete(tree, cache, l, r);
+                                node_delete(tree, node, l_sib, r_sib);
                                 /* trace upwards */
-                                non_leaf_remove(tree, p, i);
+                                non_leaf_remove(tree, parent, i);
                         }
                 } else {
                         /* remove at first in case of overflow during merging with sibling */
                         non_leaf_simple_remove(tree, node, remove);
 
-                        struct bplus_node *r_sib = r->buf;
                         if (r_sib->children > (_max_order + 1) / 2) {
                                 non_leaf_shift_from_right(tree, node, r_sib, parent, i + 1);
                                 /* flush nodes */
-                                node_flush(tree, cache);
-                                node_flush(tree, l);
-                                node_flush(tree, r);
-                                node_flush(tree, p);
+                                node_flush(tree, node);
+                                node_flush(tree, l_sib);
+                                node_flush(tree, r_sib);
+                                node_flush(tree, parent);
                         } else {
                                 non_leaf_merge_from_right(tree, node, r_sib, parent, i + 1);
                                 /* delete empty right sibling and flush */
-                                struct node_cache *rr = node_fetch(tree, r_sib->next);
-                                node_delete(tree, r, cache, rr);
-                                node_flush(tree, l);
+                                struct bplus_node *rr_sib = node_fetch(tree, r_sib->next);
+                                node_delete(tree, r_sib, node, rr_sib);
+                                node_flush(tree, l_sib);
                                 /* trace upwards */
-                                non_leaf_remove(tree, p, i + 1);
+                                non_leaf_remove(tree, parent, i + 1);
                         }
                 }
         } else {
                 non_leaf_simple_remove(tree, node, remove);
-                node_flush(tree, cache);
+                node_flush(tree, node);
         }
 }
 
@@ -904,80 +870,76 @@ static inline void leaf_simple_remove(struct bplus_tree *tree, struct bplus_node
         leaf->children--;
 }
 
-static int leaf_remove(struct bplus_tree *tree, struct node_cache *cache, key_t key)
+static int leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, key_t key)
 {
-        struct bplus_node *leaf = cache->buf;
         int remove = key_binary_search(leaf, key);
         if (remove < 0) {
                 /* Not exist */
                 return -1;
         }
 
-        /* fetch from cache list */
-        list_del(&cache->link);
+        /* fetch from free node caches */
+        int i = ((char *) leaf - tree->caches) / _block_size;
+        tree->used[i] = 1;
 
         if (leaf->parent_key_offset == INVALID_OFFSET) {
-                /* leaf is the root */
+                /* leaf as the root */
                 if (leaf->children == 1) {
                         /* delete the only last node */
                         assert(key == key(leaf)[0]);
                         tree->root = INVALID_OFFSET;
                         tree->level = 0;
-                        node_delete(tree, cache, NULL, NULL);
+                        node_delete(tree, leaf, NULL, NULL);
                 } else {
                         leaf_simple_remove(tree, leaf, remove);
-                        node_flush(tree, cache);
+                        node_flush(tree, leaf);
                 }
         } else if (leaf->children <= (_max_entries + 1) / 2) {
-                struct node_cache *l = node_fetch(tree, leaf->prev);
-                struct node_cache *r = node_fetch(tree, leaf->next);
-                struct node_cache *p = node_fetch(tree, parent_offset(leaf));
-
-                int i = parent_key_index(leaf);
-                struct bplus_node *parent = p->buf;
+                i = parent_key_index(leaf);
+                struct bplus_node *l_sib = node_fetch(tree, leaf->prev);
+                struct bplus_node *r_sib = node_fetch(tree, leaf->next);
+                struct bplus_node *parent = node_fetch(tree, parent_offset(leaf));
 
                 /* decide which sibling to be borrowed from */
-                if (sibling_select(l, r, parent, i) == LEFT_SIBLING) {
-                        struct bplus_node *l_sib = l->buf;
+                if (sibling_select(l_sib, r_sib, parent, i) == LEFT_SIBLING) {
                         if (l_sib->children > (_max_entries + 1) / 2) {
                                 leaf_shift_from_left(tree, leaf, l_sib, parent, i, remove);
                                 /* flush leaves */
-                                node_flush(tree, cache);
-                                node_flush(tree, l);
-                                node_flush(tree, r);
-                                node_flush(tree, p);
+                                node_flush(tree, leaf);
+                                node_flush(tree, l_sib);
+                                node_flush(tree, r_sib);
+                                node_flush(tree, parent);
                         } else {
                                 leaf_merge_into_left(tree, leaf, l_sib, i, remove);
                                 /* delete empty leaf and flush */
-                                node_delete(tree, cache, l, r);
+                                node_delete(tree, leaf, l_sib, r_sib);
                                 /* trace upwards */
-                                non_leaf_remove(tree, p, i);
+                                non_leaf_remove(tree, parent, i);
                         }
                 } else {
                         /* remove at first in case of overflow during merging with sibling */
                         leaf_simple_remove(tree, leaf, remove);
 
-                        struct bplus_node *r_sib = r->buf;
                         if (r_sib->children > (_max_entries + 1) / 2) {
                                 leaf_shift_from_right(tree, leaf, r_sib, parent, i + 1);
                                 /* flush leaves */
-                                node_flush(tree, cache);
-                                node_flush(tree, l);
-                                node_flush(tree, r);
-                                node_flush(tree, p);
+                                node_flush(tree, leaf);
+                                node_flush(tree, l_sib);
+                                node_flush(tree, r_sib);
+                                node_flush(tree, parent);
                         } else {
                                 leaf_merge_from_right(tree, leaf, r_sib);
                                 /* delete empty right sibling flush */
-                                struct node_cache *rr = node_fetch(tree, r_sib->next);
-                                node_delete(tree, r, cache, rr);
-                                node_flush(tree, l);
+                                struct bplus_node *rr_sib = node_fetch(tree, r_sib->next);
+                                node_delete(tree, r_sib, leaf, rr_sib);
+                                node_flush(tree, l_sib);
                                 /* trace upwards */
-                                non_leaf_remove(tree, p, i + 1);
+                                non_leaf_remove(tree, parent, i + 1);
                         }
                 }
         } else {
                 leaf_simple_remove(tree, leaf, remove);
-                node_flush(tree, cache);
+                node_flush(tree, leaf);
         }
 
         return 0;
@@ -985,18 +947,17 @@ static int leaf_remove(struct bplus_tree *tree, struct node_cache *cache, key_t 
 
 static int bplus_tree_delete(struct bplus_tree *tree, key_t key)
 {
-        struct node_cache *cache = node_seek(tree, tree->root);
-        while (cache != NULL) {
-                struct bplus_node *node = cache->buf;
+        struct bplus_node *node = node_seek(tree, tree->root);
+        while (node != NULL) {
                 if (is_leaf(node)) {
-                        return leaf_remove(tree, cache, key);
+                        return leaf_remove(tree, node, key);
                 } else {
                         int i = key_binary_search(node, key);
                         if (i >= 0) {
-                                cache = node_seek(tree, sub(node)[i + 1]);
+                                node = node_seek(tree, sub(node)[i + 1]);
                         } else {
                                 i = -i - 1;
-                                cache = node_seek(tree, sub(node)[i]);
+                                node = node_seek(tree, sub(node)[i]);
                         }
                 }
         }
@@ -1023,31 +984,30 @@ long bplus_tree_get_range(struct bplus_tree *tree, key_t key1, key_t key2)
         key_t min = key1 <= key2 ? key1 : key2;
         key_t max = min == key1 ? key2 : key1;
 
-        struct node_cache *cache = node_seek(tree, tree->root);
-        while (cache != NULL) {
-                struct bplus_node *node = cache->buf;
+        struct bplus_node *node = node_seek(tree, tree->root);
+        while (node != NULL) {
                 int i = key_binary_search(node, min);
                 if (is_leaf(node)) {
                         if (i < 0) {
                                 i = -i - 1;
                                 if (i >= node->children) {
-                                        cache = node_seek(tree, node->next);
+                                        node = node_seek(tree, node->next);
                                 }
                         }
                         while (node != NULL && key(node)[i] <= max) {
                                 start = data(node)[i];
                                 if (++i >= node->children) {
-                                        cache = node_seek(tree, node->next);
+                                        node = node_seek(tree, node->next);
                                         i = 0;
                                 }
                         }
                         break;
                 } else {
                         if (i >= 0) {
-                                cache = node_seek(tree, sub(node)[i + 1]);
+                                node = node_seek(tree, sub(node)[i + 1]);
                         } else  {
                                 i = -i - 1;
-                                cache = node_seek(tree, sub(node)[i]);
+                                node = node_seek(tree, sub(node)[i]);
                         }
                 }
         }
@@ -1149,20 +1109,14 @@ struct bplus_tree *bplus_tree_init(char *filename, int block_size)
                 _block_size = block_size;
                 tree->file_size = 0;
         }
+
         /* set order and entries */
         _max_order = (_block_size - sizeof(node)) / (sizeof(key_t) + sizeof(off_t));
         _max_entries = (_block_size - sizeof(node)) / (sizeof(key_t) + sizeof(long));
         printf("config node order:%d and leaf entries:%d\n", _max_order, _max_entries);
 
-        /* init node cache */
-        list_init(&tree->free_caches);
-        for (i = 0; i < MIN_CACHE_NUM; i++) {
-                struct node_cache *cache = calloc(1, sizeof(*cache));
-                assert(cache != NULL);
-                cache->buf = malloc(_block_size);
-                assert(cache->buf != NULL);
-                list_add(&cache->link, &tree->free_caches);
-        }
+        /* init free node caches */
+        tree->caches = malloc(_block_size * MIN_CACHE_NUM);
 
         /* open data file */
         tree->fd = bplus_open(filename);
@@ -1187,15 +1141,8 @@ void bplus_tree_deinit(struct bplus_tree *tree)
                 free(block);
         }
 
-        /* free node caches */
-        list_for_each_safe(pos, n, &tree->free_caches) {
-                struct node_cache *cache = list_entry(pos, struct node_cache, link);
-                free(cache->buf);
-                free(cache);
-        }
-
-        close(fd);
         bplus_close(tree->fd);
+        free(tree->caches);
         free(tree);
 }
 
@@ -1253,14 +1200,13 @@ static void draw(struct bplus_tree *tree, struct bplus_node *node, struct node_b
 void bplus_tree_dump(struct bplus_tree *tree)
 {
         int level = 0;
-        struct node_cache *cache = node_seek(tree, tree->root);
+        struct bplus_node *node = node_seek(tree, tree->root);
         struct node_backlog *p_nbl = NULL;
         struct node_backlog nbl_stack[MAX_LEVEL];
         struct node_backlog *top = nbl_stack;
 
         for (; ;) {
-                if (cache != NULL) {
-                        struct bplus_node *node = cache->buf;
+                if (node != NULL) {
                         /* non-zero needs backward and zero does not */
                         int sub_idx = p_nbl != NULL ? p_nbl->next_sub_idx : 0;
                         /* Reset each loop */
@@ -1283,14 +1229,14 @@ void bplus_tree_dump(struct bplus_tree *tree)
                         }
 
                         /* Move deep down */
-                        cache = is_leaf(node) ? NULL : node_seek(tree, sub(node)[sub_idx]);
+                        node = is_leaf(node) ? NULL : node_seek(tree, sub(node)[sub_idx]);
                 } else {
                         p_nbl = top == nbl_stack ? NULL : --top;
                         if (p_nbl == NULL) {
                                 /* End of traversal */
                                 break;
                         }
-                        cache = node_seek(tree, p_nbl->offset);
+                        node = node_seek(tree, p_nbl->offset);
                         level--;
                 }
         }

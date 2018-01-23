@@ -5,6 +5,24 @@
 #ifndef _BPLUS_TREE_H
 #define _BPLUS_TREE_H
 
+#define MIN_CACHE_NUM 5
+
+#define list_entry(ptr, type, member) \
+        ((type *)((char *)(ptr) - (size_t)(&((type *)0)->member)))
+
+#define list_first_entry(ptr, type, member) \
+	list_entry((ptr)->next, type, member)
+
+#define list_last_entry(ptr, type, member) \
+	list_entry((ptr)->prev, type, member)
+
+#define list_for_each(pos, head) \
+        for (pos = (head)->next; pos != (head); pos = pos->next)
+
+#define list_for_each_safe(pos, n, head) \
+        for (pos = (head)->next, n = pos->next; pos != (head); \
+                pos = n, n = pos->next)
+
 typedef int key_t;
 
 struct list_head {
@@ -53,22 +71,6 @@ static inline int list_empty(const struct list_head *head)
 	return head->next == head;
 }
 
-#define list_entry(ptr, type, member) \
-        ((type *)((char *)(ptr) - (size_t)(&((type *)0)->member)))
-
-#define list_first_entry(ptr, type, member) \
-	list_entry((ptr)->next, type, member)
-
-#define list_last_entry(ptr, type, member) \
-	list_entry((ptr)->prev, type, member)
-
-#define list_for_each(pos, head) \
-        for (pos = (head)->next; pos != (head); pos = pos->next)
-
-#define list_for_each_safe(pos, n, head) \
-        for (pos = (head)->next, n = pos->next; pos != (head); \
-                pos = n, n = pos->next)
-
 typedef struct bplus_node {
         off_t self;
         off_t prev;
@@ -109,19 +111,15 @@ typedef struct free_block {
         off_t offset;
 } free_block;
 
-typedef struct node_cache {
-        struct list_head link;
-        struct bplus_node *buf;
-} node_cache;
-
 struct bplus_tree {
+        char *caches;
+        int used[MIN_CACHE_NUM];
         char filename[1024];
         int fd;
         int level;
         off_t root;
         off_t file_size;
         struct list_head free_blocks;
-        struct list_head free_caches;
 };
 
 void bplus_tree_dump(struct bplus_tree *tree);
