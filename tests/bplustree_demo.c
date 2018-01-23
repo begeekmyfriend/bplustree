@@ -71,7 +71,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                                 again = 1;
                         } else {
                                 int order = (size - sizeof(struct bplus_node)) / (sizeof(key_t) + sizeof(off_t));
-                                if ((size_t) size < sizeof(struct bplus_node) || order <= 2) {
+                                if (size < (int) sizeof(struct bplus_node) || order <= 2) {
                                         fprintf(stderr, "block size is too small for one node!\n");
                                         again = 1;
                                 } else {

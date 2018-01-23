@@ -1079,7 +1079,7 @@ struct bplus_tree *bplus_tree_init(char *filename, int block_size)
                 return NULL;
         }
 
-        if (block_size < sizeof(node)) {
+        if (block_size < (int) sizeof(node)) {
                 fprintf(stderr, "block size is too small for one node!\n");
                 return NULL;
         }
