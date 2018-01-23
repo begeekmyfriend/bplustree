@@ -73,9 +73,9 @@ static inline int list_empty(const struct list_head *head)
 
 typedef struct bplus_node {
         off_t self;
+        off_t parent;
         off_t prev;
         off_t next;
-        off_t parent_key_offset;
         int type;
         /* If leaf node, it specifies  count of entries,
          * if non-leaf node, it specifies count of children(branches) */
@@ -85,9 +85,9 @@ typedef struct bplus_node {
 /*
 struct bplus_non_leaf {
         off_t self;
+        off_t parent;
         off_t prev;
         off_t next;
-        off_t parent_key_offset;
         int type;
         int children;
         key_t key[BPLUS_MAX_ORDER - 1];
@@ -96,9 +96,9 @@ struct bplus_non_leaf {
 
 struct bplus_leaf {
         off_t self;
+        off_t parent;
         off_t prev;
         off_t next;
-        off_t parent_key_offset;
         int type;
         int entries;
         key_t key[BPLUS_MAX_ENTRIES];
