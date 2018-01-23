@@ -22,8 +22,8 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         int i, size, ret = 0, again = 1;
 
         printf("\n-- B+tree setting...\n");
-        printf("Set data index file name (e.g. /tmp/data.index): ");
         while (again) {
+                printf("Set data index file name (e.g. /tmp/data.index): ");
                 switch (i = getchar()) {
                 case EOF:
                         printf("\n");
@@ -47,8 +47,8 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
         }
 
         again = 1;
-        printf("Set index file block size (bytes, power of 2, e.g. 4096): ");
         while (again) {
+                printf("Set index file block size (bytes, power of 2, e.g. 4096): ");
                 switch (i = getchar()) {
                 case EOF:
                         printf("\n");
@@ -65,10 +65,19 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                                 stdin_flush();
                                 again = 1;
                         } else if (size <= 0 || (size & (size - 1)) != 0) {
+                		fprintf(stderr, "Block size must be positive and pow of 2!\n");
+                                again = 1;
+                        } else if (size <= 0 || (size & (size - 1)) != 0) {
                                 again = 1;
                         } else {
-                                config->block_size = size;
-                                again = 0;
+                                int order = (size - sizeof(struct bplus_node)) / (sizeof(key_t) + sizeof(off_t));
+                                if ((size_t) size < sizeof(struct bplus_node) || order <= 2) {
+                                        fprintf(stderr, "block size is too small for one node!\n");
+                                        again = 1;
+                                } else {
+                                        config->block_size = size;
+                                        again = 0;
+                                }
                         }
                         break;
                 }

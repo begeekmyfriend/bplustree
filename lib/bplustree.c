@@ -1068,10 +1068,19 @@ struct bplus_tree *bplus_tree_init(char *filename, int block_size)
 {
         int i;
         struct bplus_node node;
-        assert((block_size & (block_size - 1)) == 0);
 
         if (strlen(filename) >= 1024) {
                 fprintf(stderr, "Index file name too long!\n");
+                return NULL;
+        }
+
+        if (block_size & (block_size - 1) != 0) {
+                fprintf(stderr, "Block size must be pow of 2!\n");
+                return NULL;
+        }
+
+        if (block_size < sizeof(node)) {
+                fprintf(stderr, "block size is too small for one node!\n");
                 return NULL;
         }
 
