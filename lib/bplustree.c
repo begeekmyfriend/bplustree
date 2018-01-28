@@ -28,8 +28,6 @@ enum {
         RIGHT_SIBLING = 1,
 };
 
-/* 5 node caches are needed at least for self, left and right sibling, sibling
- * of sibling, parent and node seeking */
 #define ADDR_STR_WIDTH 16
 #define offset_ptr(node) ((char *) (node) + sizeof(*node))
 #define key(node) ((key_t *)offset_ptr(node))
@@ -817,10 +815,12 @@ static void leaf_shift_from_left(struct bplus_tree *tree, struct bplus_node *lea
         /* right shift in leaf node */
         memmove(&key(leaf)[1], &key(leaf)[0], remove * sizeof(key_t));
         memmove(&data(leaf)[1], &data(leaf)[0], remove * sizeof(off_t));
+
         /* borrow the last element from left sibling */
         key(leaf)[0] = key(left)[left->children - 1];
         data(leaf)[0] = data(left)[left->children - 1];
         left->children--;
+
         /* update parent key */
         key(parent)[parent_key_index] = key(leaf)[0];
 }
@@ -844,10 +844,12 @@ static void leaf_shift_from_right(struct bplus_tree *tree, struct bplus_node *le
         key(leaf)[leaf->children] = key(right)[0];
         data(leaf)[leaf->children] = data(right)[0];
         leaf->children++;
+
         /* left shift in right sibling */
         memmove(&key(right)[0], &key(right)[1], (right->children - 1) * sizeof(key_t));
         memmove(&data(right)[0], &data(right)[1], (right->children - 1) * sizeof(off_t));
         right->children--;
+
         /* update parent key */
         key(parent)[parent_key_index] = key(right)[0];
 }
@@ -1074,7 +1076,7 @@ struct bplus_tree *bplus_tree_init(char *filename, int block_size)
                 return NULL;
         }
 
-        if (block_size & (block_size - 1) != 0) {
+        if ((block_size & (block_size - 1)) != 0) {
                 fprintf(stderr, "Block size must be pow of 2!\n");
                 return NULL;
         }

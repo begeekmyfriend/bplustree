@@ -141,7 +141,7 @@ void exec_file(char *file, struct bplus_tree *tree)
 
 int main(void)
 {
-        struct bplus_tree *tree = bplus_tree_init("/tmp/data.index", 512);
+        struct bplus_tree *tree = bplus_tree_init("/tmp/coverage.index", 512);
         exec_file("testcase", tree);
         show_running_info();
         /* test range search */
@@ -149,7 +149,7 @@ int main(void)
         bplus_tree_get_range(tree, 100000, 10000);
         bplus_tree_deinit(tree);
 
-        tree = bplus_tree_init("/tmp/data.index", 0);
+        tree = bplus_tree_init("/tmp/coverage.index", 128);
         bplus_tree_deinit(tree);
 
         return 0;

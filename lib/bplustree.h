@@ -5,6 +5,8 @@
 #ifndef _BPLUS_TREE_H
 #define _BPLUS_TREE_H
 
+/* 5 node caches are needed at least for self, left and right sibling, sibling
+ * of sibling, parent and node seeking */
 #define MIN_CACHE_NUM 5
 
 #define list_entry(ptr, type, member) \
