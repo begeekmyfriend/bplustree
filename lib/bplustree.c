@@ -844,12 +844,18 @@ int bplus_tree_get_range(struct bplus_tree *tree, key_t key1, key_t key2)
                     if (i < 0) {
                             i = -i - 1;
                             if (i >= ln->entries) {
+                                    if (list_is_last(&ln->link, &tree->list[0])) {
+                                            return -1;
+                                    }
                                     ln = list_next_entry(ln, link);
                             }
                     }
-                    while (ln != NULL && ln->key[i] <= max) {
+                    while (ln->key[i] <= max) {
                             data = ln->data[i];
                             if (++i >= ln->entries) {
+                                    if (list_is_last(&ln->link, &tree->list[0])) {
+                                            return -1;
+                                    }
                                     ln = list_next_entry(ln, link);
                                     i = 0;
                             }
