@@ -827,7 +827,19 @@ struct bplus_tree *bplus_tree_init(int order, int entries)
 
 void bplus_tree_deinit(struct bplus_tree *tree)
 {
-        free(tree);
+    int i;
+    for(i=0; i<tree->level; i++)
+    {
+        struct list_head *cur, *next;
+        list_for_each_safe(cur, next, &tree->list[i])
+        {
+            list_del(cur);
+            struct bplus_node * node = list_entry(cur, struct bplus_node, link);
+            free(node);
+        }
+    }
+
+    free(tree);
 }
 
 int bplus_tree_get_range(struct bplus_tree *tree, key_t key1, key_t key2)
