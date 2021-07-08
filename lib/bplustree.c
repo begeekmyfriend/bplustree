@@ -828,7 +828,7 @@ struct bplus_tree *bplus_tree_init(int order, int entries)
 void bplus_tree_deinit(struct bplus_tree *tree)
 {
     int i;
-    for(i=0; i<tree->level; i++)
+    for(i=0; i<=tree->level; i++)
     {
         struct list_head *cur, *next;
         list_for_each_safe(cur, next, &tree->list[i])
