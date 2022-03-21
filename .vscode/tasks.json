@@ -1,0 +1,144 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        { // 在根文件夹中执行创建文件夹build的命令
+            // 除windows系统外执行的命令为`mkdir -p build`
+            // windows系统是在powershell中执行命令`mkdir -Force build`
+            "label": "build_dir",
+            "command": "mkdir",
+            "type": "shell",
+            "args": [
+                "-p",
+                "build"
+            ],
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "powershell.exe"
+                    }
+                },
+                "args": [
+                    "-Force",
+                    "build"
+                ],
+            }
+        },
+        { // 在build文件夹中调用cmake进行项目配置
+            // 除windows系统外执行的命令为`cmake -DCMAKE_BUILD_TYPE=<Debug|Release|RelWithDebInfo|MinSizeRel> ../`
+            // windows系统是在visual stuido的环境中执行命令`cmake -DCMAKE_BUILD_TYPE=<Debug|Release|RelWithDebInfo|MinSizeRel>  ../ -G "CodeBlocks - NMake Makefiles"`
+            "label": "cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-DCMAKE_BUILD_TYPE=${input:CMAKE_BUILD_TYPE}",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", // 生成compile_commands.json 供c/c++扩展提示使用
+                "../"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build",
+            },
+            "windows": {
+                "args": [
+                    "-DCMAKE_BUILD_TYPE=${input:CMAKE_BUILD_TYPE}",
+                    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+                    "../",
+                    "-G",
+                    "\"CodeBlocks - NMake Makefiles\""
+                ],
+                "options": {
+                    "shell": {
+                        // "executable": "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\vcvarsall.bat",
+                        // 需要根据安装的vs版本调用vs工具命令提示符
+                        "executable": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+                        "args": [
+                            "${input:PLATFORM}", //指定平台
+                            "-vcvars_ver=${input:vcvars_ver}", //指定vc环境版本
+                            "&&"
+                        ]
+                    }
+                },
+            },
+            "dependsOn": [
+                "build_dir" // 在task `build_dir` 后执行该task
+            ]
+        },
+        { // 在build文件夹中调用cmake编译构建debug程序
+            // 执行的命令为`cmake --build ./ --target all --`
+            //  windows系统如上需要在visual stuido的环境中执行命令
+            "label": "build",
+            "group": "build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "./",
+                "--target",
+                "all",
+                "--"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build",
+            },
+            "problemMatcher": "$gcc",
+            "windows": {
+                "options": {
+                    "shell": {
+                        // "executable": "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\vcvarsall.bat",
+                        "executable": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+                        "args": [
+                            "${input:PLATFORM}",
+                            "-vcvars_ver=${input:vcvars_ver}",
+                            "&&"
+                        ]
+                    }
+                },
+                "problemMatcher": "$msCompile"
+            },
+            "dependsOn": [
+                "cmake" // 在task `cmake` 后执行该task
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "CMAKE_BUILD_TYPE",
+            "type": "pickString",
+            "description": "What CMAKE_BUILD_TYPE do you want to create?",
+            "options": [
+                "Debug",
+                "Release",
+                "RelWithDebInfo",
+                "MinSizeRel",
+            ],
+            "default": "Debug"
+        },
+        {
+            "id": "PLATFORM",
+            "type": "pickString",
+            "description": "What PLATFORM do you want to create?",
+            "options": [
+                "x86",
+                "amd64",
+                "arm",
+                "x86_arm",
+                "x86_amd64",
+                "amd64_x86",
+                "amd64_arm",
+            ],
+            "default": "amd64"
+        },
+        {
+            "id": "vcvars_ver",
+            "type": "pickString",
+            "description": "What vcvars_ver do you want to create?",
+            "options": [
+                "14.2", // 2019
+                "14.1", // 2017
+                "14.0", // 2015
+            ],
+            "default": "14.2"
+        }
+    ]
+}
