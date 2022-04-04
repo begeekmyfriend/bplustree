@@ -1,9 +1,17 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include "bplustree.h"
+
+enum
+{
+    BPLUS_TREE_LEAF,
+    BPLUS_TREE_NONLEAF = 1,
+};
+
+
 int bplus_tree_get(struct bplus_tree *tree, key_t key)
 {
-
+    
 }
 
 /** 
@@ -26,6 +34,12 @@ static struct bplus_leaf *leaf_new(void)
 
 }
 
+
+static inline int is_leaf(struct bplus_node *node)
+{
+    return node->type;
+}
+
  /** insert key-value pair to tree.
   * if the tree is empty,we insert the key-value pair into root
   * 
@@ -44,7 +58,7 @@ static struct bplus_leaf *leaf_new(void)
 static int bplus_tree_insert(struct bplus_tree *tree,key_t key,int data)
 {
     struct bplus_node *node = tree->root;
-    // 
+    // bplus tree exist
     while(node!=NULL)
     {
         if(is_leaf(node))
@@ -68,8 +82,15 @@ static int bplus_tree_insert(struct bplus_tree *tree,key_t key,int data)
         }
         
     }
-    
+    // tree empty
     struct bplus_leaf *root = leaf_new();
+    root->key[0] = key;
+    root->data[0] = data;
+    root->entries = 1;
+    tree->root =(struct bplus_non_leaf *) root;
+    list_add(&root,&tree->list[tree->level]);
+    return 0;
+    
     
 
 }
