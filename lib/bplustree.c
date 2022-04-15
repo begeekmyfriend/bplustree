@@ -55,15 +55,27 @@ static int parent_node_build(struct bplus_tree *tree,struct bplus_node *left,str
     if(left->parent == NULL && right->parent == NULL)
     {
         struct bplus_non_leaf *parent = non_leaf_new();
+        parent->key[0] = key;
+        parent->sub_ptr[0] = left;
+        parent->sub_ptr[0]->parent = parent;
+        parent->sub_ptr[0]->parent_key_idx = -1;
+        parent -> sub_ptr[1] = right;
+        parent->sub_ptr[1]->parent = parent;
+        parent -> sub_ptr[1]->parent_key_idx = 0;
+        parent->children = 2;
         
+        tree->root = parent;
+        list_add(&parent->link,&tree->list[++tree->level]);
+        return 0;
     }
     else if(right->parent == NULL)
     {
-        
+        right->parent = left->parent;
+        return non_leaf_insert(tree,left->parent,left,right,key,level);
     }
     else
     {
-        
+        return non_leaf_insert(tree,left->parent,left,right,key,level);
     }
 }
 
