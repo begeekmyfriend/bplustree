@@ -3,6 +3,7 @@
 #include<assert.h>
 #include "bplustree.h"
 
+<<<<<<< HEAD
 
 enum
 {
@@ -25,7 +26,18 @@ static struct bplus_leaf *leaf_new(void)
     node->type = BPLUS_TREE_LEAF;
     node->parent_key_idx = -1;
     return node;
+=======
+enum
+{
+    BPLUS_TREE_LEAF,
+    BPLUS_TREE_NONLEAF = 1,
+};
 
+>>>>>>> origin/in-memory
+
+int bplus_tree_get(struct bplus_tree *tree, key_t key)
+{
+    
 }
 
 static int non_leaf_insert(struct bplus_tree *tree,struct bplus_non_leaf *node,struct bplus_node *l_ch,
@@ -233,6 +245,7 @@ static key_t key_binary_search(key_t *arr,int len,int target)
 
 
 
+<<<<<<< HEAD
 /** whether node is leaf or not
  * 
  * @return 1 if  BPLUS_TREE_LEAF
@@ -242,6 +255,15 @@ static inline int is_leaf(struct bplus_node *node)
     return node->type == BPLUS_TREE_LEAF;
 }
 /** insert key-value pair to tree.
+=======
+
+static inline int is_leaf(struct bplus_node *node)
+{
+    return node->type;
+}
+
+ /** insert key-value pair to tree.
+>>>>>>> origin/in-memory
   * if the tree is empty,we insert the key-value pair into root
   * 
   * if the tree is not empty: 
