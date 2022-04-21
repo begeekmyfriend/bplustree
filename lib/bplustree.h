@@ -37,6 +37,11 @@ static inline void __list_del(struct list_head *prev, struct list_head *next)
         next->prev = prev;
 }
 
+/** insert link after prev
+ * 
+ * 
+ * 
+ * */
 static inline void list_add(struct list_head *link, struct list_head *prev)
 {
         __list_add(link, prev, prev->next);
@@ -78,7 +83,7 @@ static inline int list_is_last(struct list_head *link, struct list_head *head)
 /**
  * b plus tree basic node
  * 
- * 
+ *  
  */ 
 struct bplus_node {
 /**  type indicates leaf node or not
@@ -151,7 +156,7 @@ struct bplus_tree {
 /** height of the tree */
         int level;
         struct bplus_node *root;
-/** double linked list to search leaf node */
+/** double linked list to search leaf node*/
         struct list_head list[BPLUS_MAX_LEVEL];
 };
  /** print the whole tree for debugging
@@ -165,8 +170,8 @@ void bplus_tree_dump(struct bplus_tree *tree);
    * @param key  key in key-value pair
    */
 int bplus_tree_get(struct bplus_tree *tree, key_t key);
- /** insert key-value pair to tree
-   *  
+ /** insert key-value pair to tree. remove the pair when key is 0
+   * @return 0 if insert succeed , -1 if delete succeed
    * @param tree pointer to bplus tree
    * @param key  key in key-value pair
    * @param data value in key-value pair
@@ -175,7 +180,7 @@ int bplus_tree_get(struct bplus_tree *tree, key_t key);
 int bplus_tree_put(struct bplus_tree *tree, key_t key, int data);
 
  /** return data between [key1,key2]
-   *  
+   * @return 
    * @param tree pointer to bplus tree
    * @param key1  key in key-value pair
    * @param key2 value in key-value pair
@@ -194,7 +199,6 @@ int bplus_tree_get_range(struct bplus_tree *tree, key_t key1, key_t key2);
 struct bplus_tree *bplus_tree_init(int order, int entries);
  /** destory the tree safely
   * @return a pointer to tree
-   *  
    * @param order  The actual number of children for a node, referred to here as order 
    * @param entries   number of actual key-value pairs in tree 
    
