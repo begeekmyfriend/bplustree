@@ -37,11 +37,7 @@ static inline void __list_del(struct list_head *prev, struct list_head *next)
         next->prev = prev;
 }
 
-/** insert link after prev
- * 
- * 
- * 
- * */
+// prev next to  prev link next
 static inline void list_add(struct list_head *link, struct list_head *prev)
 {
         __list_add(link, prev, prev->next);
@@ -132,7 +128,9 @@ struct bplus_leaf {
  *     BPLUS_TREE_LEAF is 0 and  BPLUS_TREE_NON_LEAF is 1
  */
         int type;
-/**     parent_key_idx: index of parent node */
+/**     parent_key_idx: index of parent node 
+        -1 means current node is the far left node which don not have left sibling node
+*/
         int parent_key_idx;
 /** piointer to parent node */
         struct bplus_non_leaf *parent;

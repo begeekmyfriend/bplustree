@@ -528,7 +528,25 @@ static void leaf_simple_remove(struct bplus_leaf *leafnode,int remove)
 {
     
 }
-static int leaf_sibling_selelct()
+static int leaf_sibling_selelct(struct bplus_leaf *l_sib,struct bplus_leaf *r_sib,struct bplus_non_leaf *parent,int i)
+{
+    if(i == -1)
+    {
+        return RIGHT_SIBLING;
+    }
+    else if(i == parent->children -2)
+    {
+        return LEFT_SIBLING;
+    }
+    else
+    {
+        return l_sib->entries >= r_sib->entries ? LEFT_SIBLING:RIGHT_SIBLING;
+    }
+}
+static void leaf_shift_from_left()
+{
+
+}
 static int leaf_remove(struct bplus_tree *tree,struct bplus_leaf *leafnode,key_t key)
 {
     int remove = key_binary_search(leafnode->key,leaf->entries,key);
@@ -549,7 +567,7 @@ static int leaf_remove(struct bplus_tree *tree,struct bplus_leaf *leafnode,key_t
             {
                 if(l_sib->entries > (tree->entries+1)/2)
                 {
-                    leaf_shift_from_left(left,l_sib,r_sib,i,remove);
+                    leaf_shift_from_left(leafnode,l_sib,r_sib,i,remove);
                 }
                 else
                 {
