@@ -132,12 +132,11 @@ static int parent_node_build(struct bplus_tree *tree, struct bplus_node *left,
 }
 
 static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_leaf *left,
-                               struct bplus_node *l_ch, struct bplus_node *r_ch, key_t key, int insert)
+                               struct bplus_node *l_ch, struct bplus_node *r_ch,
+                               key_t key, int insert, int split)
 {
         int i, j, order = node->children;
         key_t split_key;
-        /* split = [m/2] */
-        int split = (order + 1) / 2;
         /* split as left sibling */
         __list_add(&left->link, node->link.prev, &node->link);
         /* replicate from sub[0] to sub[split - 1] */
@@ -192,12 +191,11 @@ static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_lea
 }
 
 static int non_leaf_split_right1(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
-                                 struct bplus_node *l_ch, struct bplus_node *r_ch, key_t key, int insert)
+                                 struct bplus_node *l_ch, struct bplus_node *r_ch,
+                                 key_t key, int insert, int split)
 {
         int i, j, order = node->children;
         key_t split_key;
-        /* split = [m/2] */
-        int split = (order + 1) / 2;
         /* split as right sibling */
         list_add(&right->link, &node->link);
         /* split key is key[split - 1] */
@@ -224,12 +222,11 @@ static int non_leaf_split_right1(struct bplus_non_leaf *node, struct bplus_non_l
 }
 
 static int non_leaf_split_right2(struct bplus_non_leaf *node, struct bplus_non_leaf *right,
-                                 struct bplus_node *l_ch, struct bplus_node *r_ch, key_t key, int insert)
+                                 struct bplus_node *l_ch, struct bplus_node *r_ch,
+                                 key_t key, int insert, int split)
 {
         int i, j, order = node->children;
         key_t split_key;
-        /* split = [m/2] */
-        int split = (order + 1) / 2;
         /* left node's children always be [split + 1] */
         node->children = split + 1;
         /* split as right sibling */
@@ -298,14 +295,14 @@ static int non_leaf_insert(struct bplus_tree *tree, struct bplus_non_leaf *node,
         if (node->children == tree->order) {
                 /* split = [m/2] */
                 key_t split_key;
-                int split = (node->children + 1) / 2;
+                int split = node->children / 2;
                 struct bplus_non_leaf *sibling = non_leaf_new();
                 if (insert < split) {
-                        split_key = non_leaf_split_left(node, sibling, l_ch, r_ch, key, insert);
+                        split_key = non_leaf_split_left(node, sibling, l_ch, r_ch, key, insert, split);
                 } else if (insert == split) {
-                        split_key = non_leaf_split_right1(node, sibling, l_ch, r_ch, key, insert);
+                        split_key = non_leaf_split_right1(node, sibling, l_ch, r_ch, key, insert, split);
                 } else {
-                        split_key = non_leaf_split_right2(node, sibling, l_ch, r_ch, key, insert);
+                        split_key = non_leaf_split_right2(node, sibling, l_ch, r_ch, key, insert, split);
                 }
                 /* build new parent */
                 if (insert < split) {
