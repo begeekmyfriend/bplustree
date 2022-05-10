@@ -26,6 +26,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 switch (i = getchar()) {
                 case EOF:
                         fprintf(stderr, "\n");
+                        return -1;
                 case 'q':
                         return -1;
                 case '\n':
@@ -53,6 +54,7 @@ static int bplus_tree_setting(struct bplus_tree_config *config)
                 switch (i = getchar()) {
                 case EOF:
                         fprintf(stderr, "\n");
+                        return -1;
                 case 'q':
                         return -1;
                 case '\n':
@@ -187,8 +189,10 @@ static void command_process(struct bplus_tree *tree)
                         if (number_process(tree, c) < 0) {
                                 return;
                         }
+                        break;
                 case '\n':
                         fprintf(stderr, "Please input command (Type 'h' for help): ");
+                        break;
                 default:
                         break;
                 }
