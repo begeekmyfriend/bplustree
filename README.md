@@ -21,6 +21,13 @@ General Test
 
 Code Coverage Test
 ------------------
+prepare:
+you need to check whether package lcov installed.if not,excute command here
+
+` brew install lcov` in Macos
+
+`sudo apt-get install -y lcov` in Debian\Ubuntu
+
 
 ```shell
 ./coverage_build.sh
