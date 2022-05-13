@@ -315,17 +315,17 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *nod
 
         /* calculate split nodes' children (sum as (order + 1))*/
         int pivot = insert;
-        left->children = split;
-        node->children = _max_order - split + 1;
+        left->children = split + 1;
+        node->children = _max_order - split;
 
-        /* sum = left->children = pivot + (split - pivot - 1) + 1 */
+        /* sum = left->children = pivot + (split - pivot) + 1 */
         /* replicate from key[0] to key[insert] in original node */
         memmove(&key(left)[0], &key(node)[0], pivot * sizeof(key_t));
         memmove(&sub(left)[0], &sub(node)[0], pivot * sizeof(off_t));
 
-        /* replicate from key[insert] to key[split - 1] in original node */
-        memmove(&key(left)[pivot + 1], &key(node)[pivot], (split - pivot - 1) * sizeof(key_t));
-        memmove(&sub(left)[pivot + 1], &sub(node)[pivot], (split - pivot - 1) * sizeof(off_t));
+        /* replicate from key[insert] to key[split] in original node */
+        memmove(&key(left)[pivot + 1], &key(node)[pivot], (split - pivot) * sizeof(key_t));
+        memmove(&sub(left)[pivot + 1], &sub(node)[pivot], (split - pivot) * sizeof(off_t));
 
         /* flush sub-nodes of the new splitted left node */
         for (i = 0; i < left->children; i++) {
@@ -336,7 +336,7 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *nod
 
         /* insert new key and sub-nodes and locate the split key */
         key(left)[pivot] = key;
-        if (pivot == split - 1) {
+        if (pivot == split) {
                 /* left child in split left node and right child in original right one */
                 sub_node_update(tree, left, pivot, l_ch);
                 sub_node_update(tree, node, 0, r_ch);
@@ -345,14 +345,14 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *nod
                 /* both new children in split left node */
                 sub_node_update(tree, left, pivot, l_ch);
                 sub_node_update(tree, left, pivot + 1, r_ch);
-                sub(node)[0] = sub(node)[split - 1];
-                split_key = key(node)[split - 2];
+                sub(node)[0] = sub(node)[split];
+                split_key = key(node)[split - 1];
         }
 
         /* sum = node->children = 1 + (node->children - 1) */
-        /* right node left shift from key[split - 1] to key[children - 2] */
-        memmove(&key(node)[0], &key(node)[split - 1], (node->children - 1) * sizeof(key_t));
-        memmove(&sub(node)[1], &sub(node)[split], (node->children - 1) * sizeof(off_t));
+        /* right node left shift from key[split] to key[children - 2] */
+        memmove(&key(node)[0], &key(node)[split], (node->children - 1) * sizeof(key_t));
+        memmove(&sub(node)[1], &sub(node)[split + 1], (node->children - 1) * sizeof(off_t));
 
         return split_key;
 }
