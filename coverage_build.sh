@@ -1,4 +1,5 @@
 #!/bin/sh
+sudo rm /tmp/coverage*
 rm -rf build
 mkdir build
 echo "Please wait about 10 seconds for test case generation..."

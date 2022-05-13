@@ -11,7 +11,7 @@ A minimal B+Tree implementation for millions (even billions) of key-value storag
 
 ## Code Coverage Test
 
-**Note:** You need to `rm /tmp/coverage.index*` first for this testing because the configuration (i.e block size and order etc.) in those data files is immutable!
+**Note:** You need to `rm /tmp/coverage.index*` for this testing every time because the configuration (i.e block size and order etc.) in those index files is immutable!
 
 ```shell
 ./coverage_build.sh
