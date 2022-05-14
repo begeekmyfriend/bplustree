@@ -139,8 +139,8 @@ static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_lea
         key_t split_key;
         /* split as left sibling */
         __list_add(&left->link, node->link.prev, &node->link);
-        /* replicate from sub[0] to sub[split - 1] */
-        for (i = 0, j = 0; i < split; i++, j++) {
+        /* replicate from sub[0] to sub[split] */
+        for (i = 0, j = 0; i < split + 1; i++, j++) {
                 if (j == insert) {
                         left->sub_ptr[j] = l_ch;
                         left->sub_ptr[j]->parent = left;
@@ -155,9 +155,9 @@ static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_lea
                         left->sub_ptr[j]->parent_key_idx = j - 1;
                 }
         }
-        left->children = split;
-        /* replicate from key[0] to key[split - 2] */
-        for (i = 0, j = 0; i < split - 1; j++) {
+        left->children = split + 1;
+        /* replicate from key[0] to key[split - 1] */
+        for (i = 0, j = 0; i < split; j++) {
                 if (j == insert) {
                         left->key[j] = key;
                 } else {
@@ -165,7 +165,7 @@ static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_lea
                         i++;
                 }
         }
-        if (insert == split - 1) {
+        if (insert == split) {
                 left->key[insert] = key;
                 left->sub_ptr[insert] = l_ch;
                 left->sub_ptr[insert]->parent = left;
@@ -173,13 +173,13 @@ static int non_leaf_split_left(struct bplus_non_leaf *node, struct bplus_non_lea
                 node->sub_ptr[0] = r_ch;
                 split_key = key;
         } else {
-                node->sub_ptr[0] = node->sub_ptr[split - 1];
-                split_key = node->key[split - 2];
+                node->sub_ptr[0] = node->sub_ptr[split];
+                split_key = node->key[split - 1];
         }
         node->sub_ptr[0]->parent = node;
         node->sub_ptr[0]->parent_key_idx = - 1;
-        /* left shift for right node from split - 1 to children - 1 */
-        for (i = split - 1, j = 0; i < order - 1; i++, j++) {
+        /* left shift for right node from split to children - 1 */
+        for (i = split, j = 0; i < order - 1; i++, j++) {
                 node->key[j] = node->key[i];
                 node->sub_ptr[j + 1] = node->sub_ptr[i + 1];
                 node->sub_ptr[j + 1]->parent = node;
