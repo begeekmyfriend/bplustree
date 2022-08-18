@@ -1141,6 +1141,7 @@ void bplus_tree_deinit(struct bplus_tree *tree)
                 free(block);
         }
 
+        close(fd);
         bplus_close(tree->fd);
         free(tree->caches);
         free(tree);
