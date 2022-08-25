@@ -1013,6 +1013,7 @@ int bplus_open(char *filename)
 
 void bplus_close(int fd)
 {
+        fsync(fd);
         close(fd);
 }
 
@@ -1103,6 +1104,7 @@ struct bplus_tree *bplus_tree_init(char *filename, int block_size)
                         block->offset = i;
                         list_add(&block->link, &tree->free_blocks);
                 }
+                fsync(fd);
                 close(fd);
         } else {
                 tree->root = INVALID_OFFSET;
@@ -1141,6 +1143,7 @@ void bplus_tree_deinit(struct bplus_tree *tree)
                 free(block);
         }
 
+        fsync(fd);
         close(fd);
         bplus_close(tree->fd);
         free(tree->caches);
