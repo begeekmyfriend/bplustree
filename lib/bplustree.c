@@ -308,7 +308,9 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *nod
                                  struct bplus_node *r_ch, key_t key, int insert, int split)
 {
         int i;
-        key_t split_key;
+
+        /* split key is key[split - 1] */
+        key_t split_key = key(node)[split - 1];
 
         /* split as left sibling */
         left_node_add(tree, node, left);
@@ -336,28 +338,18 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *nod
 
         /* insert new key and sub-nodes and locate the split key */
         key(left)[pivot] = key;
-        if (pivot == split) {
-                /* left child in split left node and right child in original right one */
-                sub_node_update(tree, left, pivot, l_ch);
-                sub_node_update(tree, node, 0, r_ch);
-                split_key = key;
-        } else {
-                /* both new children in split left node */
-                sub_node_update(tree, left, pivot, l_ch);
-                sub_node_update(tree, left, pivot + 1, r_ch);
-                sub(node)[0] = sub(node)[split];
-                split_key = key(node)[split - 1];
-        }
+        sub_node_update(tree, left, pivot, l_ch);
+        sub_node_update(tree, left, pivot + 1, r_ch);
 
         /* sum = node->children = 1 + (node->children - 1) */
         /* right node left shift from key[split] to key[children - 2] */
         memmove(&key(node)[0], &key(node)[split], (node->children - 1) * sizeof(key_t));
-        memmove(&sub(node)[1], &sub(node)[split + 1], (node->children - 1) * sizeof(off_t));
+        memmove(&sub(node)[0], &sub(node)[split], (node->children) * sizeof(off_t));
 
         return split_key;
 }
 
-static key_t non_leaf_split_right1(struct bplus_tree *tree, struct bplus_node *node,
+static key_t non_leaf_split_middle(struct bplus_tree *tree, struct bplus_node *node,
                                    struct bplus_node *right, struct bplus_node *l_ch,
                                    struct bplus_node *r_ch, key_t key, int insert, int split)
 {
@@ -375,7 +367,7 @@ static key_t non_leaf_split_right1(struct bplus_tree *tree, struct bplus_node *n
         right->children = _max_order - split + 1;
 
         /* insert new key and sub-nodes */
-        key(right)[0] = key;
+        key(right)[pivot] = key;
         sub_node_update(tree, right, pivot, l_ch);
         sub_node_update(tree, right, pivot + 1, r_ch);
 
@@ -392,9 +384,9 @@ static key_t non_leaf_split_right1(struct bplus_tree *tree, struct bplus_node *n
         return split_key;
 }
 
-static key_t non_leaf_split_right2(struct bplus_tree *tree, struct bplus_node *node,
-                                   struct bplus_node *right, struct bplus_node *l_ch,
-                                   struct bplus_node *r_ch, key_t key, int insert, int split)
+static key_t non_leaf_split_right(struct bplus_tree *tree, struct bplus_node *node,
+                                  struct bplus_node *right, struct bplus_node *l_ch,
+                                  struct bplus_node *r_ch, key_t key, int insert, int split)
 {
         int i;
 
@@ -463,9 +455,9 @@ static int non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
                 if (insert < split) {
                         split_key = non_leaf_split_left(tree, node, sibling, l_ch, r_ch, key, insert, split);
                 } else if (insert == split) {
-                        split_key = non_leaf_split_right1(tree, node, sibling, l_ch, r_ch, key, insert, split);
+                        split_key = non_leaf_split_middle(tree, node, sibling, l_ch, r_ch, key, insert, split);
                 } else {
-                        split_key = non_leaf_split_right2(tree, node, sibling, l_ch, r_ch, key, insert, split);
+                        split_key = non_leaf_split_right(tree, node, sibling, l_ch, r_ch, key, insert, split);
                 }
 
                 /* build new parent */
